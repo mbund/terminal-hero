@@ -166,31 +166,13 @@ const guitar = `
 
 func (m Menu) View() string {
 	var guitarGradiant = ""
-	var white = 180
+	var white = 160
 	for line := range strings.SplitSeq(guitar, "\n") {
 		white -= 2
 		guitarGradiant += m.renderer.NewStyle().Foreground(lipgloss.Color(fmt.Sprintf("#ff%02x%02x", white, white))).Render(line) + "\n"
 	}
-	var textGradiant = ""
-	for line := range strings.SplitSeq(text, "\n") {
-		for _, c := range line {
-			var color string
-			switch c {
-			case '█':
-				color = "#ffffff"
-			case '▓':
-				c = '█'
-				color = "#ff4444"
-			case '▒':
-				c = '█'
-				color = "#ff0000"
-			}
-			textGradiant += m.renderer.NewStyle().Foreground(lipgloss.Color(color)).Render(fmt.Sprintf("%c", c))
-		}
-		textGradiant += "\n"
-	}
 	result := lipgloss.JoinVertical(0,
-		m.renderer.NewStyle().Foreground(lipgloss.Color("#ff0000")).Render(textGradiant),
+		m.renderer.NewStyle().Foreground(lipgloss.Color("#ff0000")).Render(text),
 		lipgloss.JoinHorizontal(0.5,
 			guitarGradiant,
 		))
