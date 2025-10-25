@@ -156,14 +156,14 @@ type TempoChange struct {
 }
 
 type Note struct {
-	tick int
-	typ  int
-	len  int
+	Tick int
+	Typ  int
+	Len  int
 }
 
 type InstrumentTrack struct {
-	name  string
-	notes []Note
+	Name  string
+	Notes []Note
 }
 
 type Chart struct {
@@ -340,7 +340,7 @@ func Parse(uchart *UnstructuredChart) (*Chart, error) {
 				typ := int(kv.value[1].(float64))
 				length := int(kv.value[2].(float64))
 
-				track.notes = append(track.notes, Note{int(tick), typ, length})
+				track.Notes = append(track.Notes, Note{int(tick), typ, length})
 			case "S":
 				// special phrase
 
@@ -352,19 +352,137 @@ func Parse(uchart *UnstructuredChart) (*Chart, error) {
 	return &chart, nil
 }
 
-//file, err := os.Open("notes.chart")
-//	if err != nil {
-//		panic(err.Error())
-//	}
-// skip BOM
-//	file.Seek(3, 0)
-//	uchart, err := gotar_hero.ParseRaw(file)
-//	if err != nil {
-//		panic(err.Error())
-//	}
-// log.SetLevel(log.DebugLevel)
-//	chart, err := gotar_hero.Parse(uchart)
-//	if err != nil {
-//		panic(err.Error())
-//	}
-//	fmt.Println(chart)
+type ChartCursor struct {
+	chart Chart
+	// the current tick, events on this tick will *not* be considered the next event
+	current_tick int
+	track        int
+	// index of the next time signature change in the TimeSignatureChanges array
+	ts_index int
+	// index of the next tempo change in the TempoChanges array
+	tempo_index int
+	// index of the next note in the Notes array
+	note_index int
+}
+
+func NewChartCursor(chart Chart, track string) (*ChartCursor, error) {
+	cursor := ChartCursor{}
+	cursor.chart = chart
+
+	for i := range chart.Tracks {
+		if chart.Tracks[i].Name == track {
+			cursor.track = i
+			return &cursor, nil
+		}
+	}
+	return nil, fmt.Errorf("unable to find track")
+}
+
+// advances the cursor by the specified number of ticks
+func (cursor *ChartCursor) AdvanceTick(ticks int) {
+	cursor.current_tick += ticks
+	i := 0
+
+	// advance ts_index
+	for i = cursor.ts_index; i < len(cursor.chart.TimeSignatureChanges) && cursor.chart.TimeSignatureChanges[i].tick <= cursor.current_tick; i++ {
+	}
+	cursor.ts_index = i
+
+	// advance tempo_index
+	for i = cursor.tempo_index; i < len(cursor.chart.TempoChanges) && cursor.chart.TempoChanges[i].tick <= cursor.current_tick; i++ {
+	}
+	cursor.tempo_index = i
+
+	// advance note_index
+	for i = cursor.note_index; i < len(cursor.chart.Tracks[cursor.track].Notes) && cursor.chart.Tracks[cursor.track].Notes[i].Tick <= cursor.current_tick; i++ {
+	}
+	cursor.note_index = i
+}
+
+func (cursor ChartCursor) NextNote() ([]Note, int) {
+	if cursor.note_index >= len(cursor.chart.Tracks[cursor.track].Notes) {
+		return []Note{}, math.MaxInt
+	}
+	next_tick := cursor.chart.Tracks[cursor.track].Notes[cursor.note_index].Tick
+	i := cursor.note_index
+	for i = cursor.note_index; i < len(cursor.chart.Tracks[cursor.track].Notes) && cursor.chart.Tracks[cursor.track].Notes[i].Tick == next_tick; i++ {
+	}
+	return cursor.chart.Tracks[cursor.track].Notes[cursor.note_index:i], (next_tick - cursor.current_tick)
+}
+
+func (cursor ChartCursor) NextTempoChange() (*TempoChange, int) {
+	if cursor.tempo_index >= len(cursor.chart.TempoChanges) {
+		return nil, math.MaxInt
+	}
+	return &cursor.chart.TempoChanges[cursor.tempo_index], cursor.chart.TempoChanges[cursor.tempo_index].tick - cursor.current_tick
+}
+
+func (cursor ChartCursor) NextTimestampChange() (*TSChange, int) {
+	if cursor.ts_index >= len(cursor.chart.TimeSignatureChanges) {
+		return nil, math.MaxInt
+	}
+	return &cursor.chart.TimeSignatureChanges[cursor.ts_index], cursor.chart.TimeSignatureChanges[cursor.ts_index].tick - cursor.current_tick
+}
+
+func (cursor ChartCursor) NextEvent() ([]any, int) {
+	notes, note_adv := cursor.NextNote()
+	tempo, tempo_adv := cursor.NextTempoChange()
+	ts, ts_adv := cursor.NextTimestampChange()
+
+	min_adv := min(note_adv, tempo_adv, ts_adv)
+
+	if min_adv == math.MaxInt {
+		return []any{}, 0
+	}
+
+	out := []any{}
+	if note_adv == min_adv {
+		out = append(out, notes)
+	}
+	if tempo_adv == min_adv {
+		out = append(out, tempo)
+	}
+	if ts_adv == min_adv {
+		out = append(out, ts)
+	}
+
+	return out, min_adv
+}
+
+// file, err := os.Open("notes.chart")
+// 	if err != nil {
+// 		panic(err.Error())
+// 	}
+// 	// skip BOM
+// 	file.Seek(3, 0)
+// 	uchart, err := gotar_hero.ParseRaw(file)
+// 	if err != nil {
+// 		panic(err.Error())
+// 	}
+// 	log.SetLevel(log.DebugLevel)
+// 	chart, err := gotar_hero.Parse(uchart)
+// 	if err != nil {
+// 		panic(err.Error())
+// 	}
+// 	cursor, err := gotar_hero.NewChartCursor(*chart, "ExpertSingle")
+
+// 	for {
+// 		t, adv := cursor.NextEvent()
+// 		if len(t) == 0 {
+// 			break
+// 		}
+// 		for i := range t {
+// 			switch u := t[i].(type) {
+// 			case []gotar_hero.Note:
+// 				fmt.Println("note", u)
+// 			case *gotar_hero.TempoChange:
+// 				fmt.Println("tempo", *u)
+// 			case *gotar_hero.TSChange:
+// 				fmt.Println("ts", *u)
+// 			}
+// 		}
+
+// 		fmt.Println("")
+
+// 		cursor.AdvanceTick(adv)
+// 	}
