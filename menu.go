@@ -1,10 +1,20 @@
+package main
+
+import (
+	"fmt"
+	"log/slog"
+	"strings"
+
+	tea "github.com/charmbracelet/bubbletea/v2"
+	"github.com/charmbracelet/lipgloss/v2"
+)
+
 type Menu struct {
-	term     string
-	profile  string
-	width    int
-	height   int
-	bg       string
-	renderer *lipgloss.Renderer
+	term    string
+	profile string
+	width   int
+	height  int
+	bg      string
 }
 
 func (m Menu) Init() tea.Cmd {
@@ -12,6 +22,13 @@ func (m Menu) Init() tea.Cmd {
 }
 
 func (m Menu) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg.(type) {
+	case tea.KeyPressMsg:
+		slog.Info("Key press")
+	case tea.KeyReleaseMsg:
+		slog.Info("Release press")
+
+	}
 	return m, nil
 }
 
@@ -25,67 +42,47 @@ const text = `
     ▒▓█▓▒     ▒▓████████▓▒ ▒▓█▓▒  ▒▓█▓▒ ▒▓█▓▒  ▒▓█▓▒  ▒▓█▓▒ ▒▓█▓▒ ▒▓█▓▒  ▒▓█▓▒ ▒▓█▓▒  ▒▓█▓▒ ▒▓████████▓▒        ▒▓█▓▒  ▒▓█▓▒ ▒▓████████▓▒ ▒▓█▓▒  ▒▓█▓▒  ▒▓██████▓▒ 
 `
 
-const guitar = `
-                                                                                                                                                                                                                                                                                                   
-                        ░░░░
-                  ░░▓▓▓▓░░
-                  ▓▓▓▓▓▓
-                ██▓▓▓▓
-                ██▓▓▓▓▒▒
-              ▒▒▓▓▓▓▓▓▓▓
-              ▒▒▓▓▓▓▓▓▓▓
-              ▓▓▓▓▓▓▓▓░░
-              ░░▓▓▓▓▓▓
-                ▓▓██▓▓
-                ▓▓▓▓▓▓
-                ████▓▓
-                ██▓▓▓▓
-                ██▓▓▓▓
-                ██▓▓▓▓
-                ██▓▓▓▓
-                ██▓▓▓▓
-                ▓▓▓▓▓▓
-                ██▓▓▓▓
-                ██▓▓▓▓
-                ██▓▓▓▓
-                ██▓▓▓▓
-                ██▓▓▓▓
-      ░░        ██▓▓▒▒
-  ░░▓▓▓▓        ██▓▓▓▓
-  ▓▓▓▓▓▓        ██▓▓▓▓
-  ▓▓▓▓▓▓▓▓    ░░▓▓▓▓▓▓
-  ▒▒▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓        ▓▓▓▓░░
-  ░░▓▓▓▓▓▓▓▓░░░░▓▓▓▓▓▓      ▒▒░░░░
-    ▓▓▓▓▓▓▓▓▒▒        ▓▓▓▓▒▒░░  ░░
-    ▓▓▓▓▓▓▓▓            ░░      ▒▒
-    ▒▒▓▓▓▓▓▓▒▒▒▒██████          ▒▒
-      ▓▓▓▓▓▓                  ▒▒
-    ░░▓▓▓▓▓▓  ▒▒██████        ▓▓
-    ▓▓▓▓▓▓░░
-  ░░▓▓▓▓▓▓    ████              ▓▓
-  ▓▓▓▓▓▓▓▓        ████  ██      ░░▓▓
-  ▓▓▓▓▓▓▓▓░░  ░░▒▒▒▒▒▒      ██▓▓  ▒▒
-▓▓▓▓▓▓▓▓▓▓▓▓▓▓▒▒▓▓▓▓▓▓▓▓▓▓▒▒░░  ██░░▒▒
-▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░  ▓▓
-▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓
-▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓
-░░▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░
-  ░░▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▒▒
-          ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░
+const guitar = `                                                      
+                                              ░░▒▒▓▓▓▓
+                                              ▒▒▓▓▓▓▓▓
+                                              ▓▓▓▓▒▒  
+                                          ░░▓▓▓▓░░    
+                                        ░░▒▒░░        
+                                      ░░░░▒▒          
+                                    ▓▓░░░░            
+                                  ░░▒▒░░              
+                                ░░▓▓                  
+                            ░░▓▓▓▓                    
+                  ░░░░    ░░▓▓▒▒                      
+              ░░▓▓▓▓    ░░▒▒▒▒                        
+              ▓▓▓▓▓▓  ░░▒▒▒▒                          
+            ▒▒▓▓▓▓██▒▒▓▓▒▒                            
+          ░░▓▓▓▓▓▓▓▓░░▒▒▒▒                            
+    ▒▒████▓▓▓▓██▒▒▓▓▓▓▒▒▓▓░░▒▒                        
+  ▓▓▓▓▓▓▓▓▓▓▓▓▒▒░░░░████████░░                        
+  ▓▓▓▓▓▓▓▓▓▓▒▒▓▓▒▒▓▓██████▓▓                          
+  ▓▓▓▓▓▓▓▓▓▓██░░██████▓▓░░                            
+  ▒▒▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓██                                
+    ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓                                
+      ▒▒██▓▓▓▓██▓▓██▒▒                                
+        ░░▓▓▓▓▓▓▓▓██                                  
 `
 
-func (m Menu) View() string {
+func (m Menu) View() tea.View {
 	var guitarGradiant = ""
 	var white = 160
 	for line := range strings.SplitSeq(guitar, "\n") {
-		white -= 2
-		guitarGradiant += m.renderer.NewStyle().Foreground(lipgloss.Color(fmt.Sprintf("#ff%02x%02x", white, white))).Render(line) + "\n"
+		white -= 4
+		guitarGradiant += lipgloss.NewStyle().Foreground(lipgloss.Color(fmt.Sprintf("#%02xff%02x", white, white))).Render(line) + "\n"
 	}
 	result := lipgloss.JoinVertical(0,
-		m.renderer.NewStyle().Foreground(lipgloss.Color("#ff0000")).Render(text),
+		lipgloss.NewStyle().Foreground(lipgloss.Color("#00cc00")).Render(text),
+		"\n\n\n",
 		lipgloss.JoinHorizontal(0.5,
 			guitarGradiant,
 		))
-	return m.renderer.Place(m.width, m.height, 1, 0.5, result)
+	result = lipgloss.Place(m.width, m.height, 0.5, 0.5, result)
+	view := tea.NewView(result)
+	view.KeyReleases = true
+	return view
 }
-

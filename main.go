@@ -6,25 +6,21 @@ package main
 import (
 	"context"
 	"errors"
-	"fmt"
 
-	// "fmt"
 	"net"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
 	_ "github.com/charmbracelet/bubbles/stopwatch"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/ssh"
-	"github.com/charmbracelet/wish"
-	"github.com/charmbracelet/wish/activeterm"
-	"github.com/charmbracelet/wish/bubbletea"
-	"github.com/charmbracelet/wish/logging"
+	"github.com/charmbracelet/wish/v2"
+	"github.com/charmbracelet/wish/v2/activeterm"
+	"github.com/charmbracelet/wish/v2/bubbletea"
+	"github.com/charmbracelet/wish/v2/logging"
 )
 
 const (
@@ -69,93 +65,10 @@ func teaHandler(s ssh.Session) (tea.Model, []tea.ProgramOption) {
 	// This should never fail, as we are using the activeterm middleware.
 	pty, _, _ := s.Pty()
 
-	renderer := bubbletea.MakeRenderer(s)
-
-	bg := "light"
-	if renderer.HasDarkBackground() {
-		bg = "dark"
-	}
-
 	m := Menu{
-		term:     pty.Term,
-		profile:  renderer.ColorProfile().Name(),
-		width:    pty.Window.Width,
-		height:   pty.Window.Height,
-		bg:       bg,
-		renderer: renderer,
+		term:   pty.Term,
+		width:  pty.Window.Width,
+		height: pty.Window.Height,
 	}
-	return m, []tea.ProgramOption{tea.WithAltScreen()}
-}
-
-// Just a generic tea.Model to demo terminal information of ssh.
-type Menu struct {
-	term     string
-	profile  string
-	width    int
-	height   int
-	bg       string
-	renderer *lipgloss.Renderer
-}
-
-func (m Menu) Init() tea.Cmd {
-	return nil
-}
-
-func (m Menu) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg.(type) {
-	case tea.KeyMsg:
-	}
-	return m, nil
-}
-
-const text = `
- ▒▓████████▓▒ ▒▓████████▓▒ ▒▓███████▓▒  ▒▓██████████████▓▒  ▒▓█▓▒ ▒▓███████▓▒   ▒▓██████▓▒  ▒▓█▓▒               ▒▓█▓▒  ▒▓█▓▒ ▒▓████████▓▒ ▒▓███████▓▒   ▒▓██████▓▒   
-    ▒▓█▓▒     ▒▓█▓▒        ▒▓█▓▒  ▒▓█▓▒ ▒▓█▓▒  ▒▓█▓▒  ▒▓█▓▒ ▒▓█▓▒ ▒▓█▓▒  ▒▓█▓▒ ▒▓█▓▒  ▒▓█▓▒ ▒▓█▓▒               ▒▓█▓▒  ▒▓█▓▒ ▒▓█▓▒        ▒▓█▓▒  ▒▓█▓▒ ▒▓█▓▒  ▒▓█▓▒  
-    ▒▓█▓▒     ▒▓█▓▒        ▒▓█▓▒  ▒▓█▓▒ ▒▓█▓▒  ▒▓█▓▒  ▒▓█▓▒ ▒▓█▓▒ ▒▓█▓▒  ▒▓█▓▒ ▒▓█▓▒  ▒▓█▓▒ ▒▓█▓▒               ▒▓█▓▒  ▒▓█▓▒ ▒▓█▓▒        ▒▓█▓▒  ▒▓█▓▒ ▒▓█▓▒  ▒▓█▓▒  
-    ▒▓█▓▒     ▒▓██████▓▒   ▒▓███████▓▒  ▒▓█▓▒  ▒▓█▓▒  ▒▓█▓▒ ▒▓█▓▒ ▒▓█▓▒  ▒▓█▓▒ ▒▓████████▓▒ ▒▓█▓▒               ▒▓████████▓▒ ▒▓██████▓▒   ▒▓███████▓▒  ▒▓█▓▒  ▒▓█▓▒  
-    ▒▓█▓▒     ▒▓█▓▒        ▒▓█▓▒  ▒▓█▓▒ ▒▓█▓▒  ▒▓█▓▒  ▒▓█▓▒ ▒▓█▓▒ ▒▓█▓▒  ▒▓█▓▒ ▒▓█▓▒  ▒▓█▓▒ ▒▓█▓▒               ▒▓█▓▒  ▒▓█▓▒ ▒▓█▓▒        ▒▓█▓▒  ▒▓█▓▒ ▒▓█▓▒  ▒▓█▓▒  
-    ▒▓█▓▒     ▒▓█▓▒        ▒▓█▓▒  ▒▓█▓▒ ▒▓█▓▒  ▒▓█▓▒  ▒▓█▓▒ ▒▓█▓▒ ▒▓█▓▒  ▒▓█▓▒ ▒▓█▓▒  ▒▓█▓▒ ▒▓█▓▒               ▒▓█▓▒  ▒▓█▓▒ ▒▓█▓▒        ▒▓█▓▒  ▒▓█▓▒ ▒▓█▓▒  ▒▓█▓▒  
-    ▒▓█▓▒     ▒▓████████▓▒ ▒▓█▓▒  ▒▓█▓▒ ▒▓█▓▒  ▒▓█▓▒  ▒▓█▓▒ ▒▓█▓▒ ▒▓█▓▒  ▒▓█▓▒ ▒▓█▓▒  ▒▓█▓▒ ▒▓████████▓▒        ▒▓█▓▒  ▒▓█▓▒ ▒▓████████▓▒ ▒▓█▓▒  ▒▓█▓▒  ▒▓██████▓▒ 
-`
-
-const guitar = `                                                      
-                                              ░░▒▒▓▓▓▓
-                                              ▒▒▓▓▓▓▓▓
-                                              ▓▓▓▓▒▒  
-                                          ░░▓▓▓▓░░    
-                                        ░░▒▒░░        
-                                      ░░░░▒▒          
-                                    ▓▓░░░░            
-                                  ░░▒▒░░              
-                                ░░▓▓                  
-                            ░░▓▓▓▓                    
-                  ░░░░    ░░▓▓▒▒                      
-              ░░▓▓▓▓    ░░▒▒▒▒                        
-              ▓▓▓▓▓▓  ░░▒▒▒▒                          
-            ▒▒▓▓▓▓██▒▒▓▓▒▒                            
-          ░░▓▓▓▓▓▓▓▓░░▒▒▒▒                            
-    ▒▒████▓▓▓▓██▒▒▓▓▓▓▒▒▓▓░░▒▒                        
-  ▓▓▓▓▓▓▓▓▓▓▓▓▒▒░░░░████████░░                        
-  ▓▓▓▓▓▓▓▓▓▓▒▒▓▓▒▒▓▓██████▓▓                          
-  ▓▓▓▓▓▓▓▓▓▓██░░██████▓▓░░                            
-  ▒▒▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓██                                
-    ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓                                
-      ▒▒██▓▓▓▓██▓▓██▒▒                                
-        ░░▓▓▓▓▓▓▓▓██                                  
-`
-
-func (m Menu) View() string {
-	var guitarGradiant = ""
-	var white = 160
-	for line := range strings.SplitSeq(guitar, "\n") {
-		white -= 4
-		guitarGradiant += m.renderer.NewStyle().Foreground(lipgloss.Color(fmt.Sprintf("#ff%02x%02x", white, white))).Render(line) + "\n"
-	}
-	result := lipgloss.JoinVertical(0,
-		m.renderer.NewStyle().Foreground(lipgloss.Color("#ff0000")).Render(text),
-		"\n\n\n",
-		lipgloss.JoinHorizontal(0.5,
-			guitarGradiant,
-		))
-	return m.renderer.Place(m.width, m.height, 0.5, 0.5, result)
+	return m, []tea.ProgramOption{}
 }
