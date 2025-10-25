@@ -151,7 +151,8 @@ type TSChange struct {
 }
 
 type TempoChange struct {
-	tick  int
+	tick int
+	// The new tempo in beats per minute
 	tempo float64
 }
 
@@ -247,9 +248,9 @@ func Parse(uchart *UnstructuredChart) (*Chart, error) {
 			t, ok := kv.value[0].(float64)
 			i := int(t)
 			if !ok || float64(i) != t {
-				return nil, fmt.Errorf("chart Resolution is not an int")
+				return nil, fmt.Errorf("chart Difficulty is not an int")
 			}
-			chart.Resolution = i
+			chart.Difficulty = i
 		case "Length":
 			t, ok := kv.value[0].(float64)
 			if !ok {
@@ -449,40 +450,51 @@ func (cursor ChartCursor) NextEvent() ([]any, int) {
 	return out, min_adv
 }
 
+func TicksPerSecond(resolution float64, bpm float64, denominator float64) float64 {
+	return resolution * (bpm / 60) * (4 / denominator)
+}
+
+func (cursor ChartCursor) CurrentTicksPerSecond() float64 {
+	bpm := cursor.chart.TempoChanges[cursor.tempo_index-1].tempo
+	denominator := cursor.chart.TimeSignatureChanges[cursor.ts_index-1].denominator
+	// log.Debug("getting tps", "resolution", cursor.chart.Resolution, "bpm", bpm, "denominator", denominator)
+	return TicksPerSecond(float64(cursor.chart.Resolution), bpm, float64(denominator))
+}
+
 // file, err := os.Open("notes.chart")
-// 	if err != nil {
-// 		panic(err.Error())
-// 	}
-// 	// skip BOM
-// 	file.Seek(3, 0)
-// 	uchart, err := gotar_hero.ParseRaw(file)
-// 	if err != nil {
-// 		panic(err.Error())
-// 	}
-// 	log.SetLevel(log.DebugLevel)
-// 	chart, err := gotar_hero.Parse(uchart)
-// 	if err != nil {
-// 		panic(err.Error())
-// 	}
-// 	cursor, err := gotar_hero.NewChartCursor(*chart, "ExpertSingle")
-
-// 	for {
-// 		t, adv := cursor.NextEvent()
-// 		if len(t) == 0 {
-// 			break
-// 		}
-// 		for i := range t {
-// 			switch u := t[i].(type) {
-// 			case []gotar_hero.Note:
-// 				fmt.Println("note", u)
-// 			case *gotar_hero.TempoChange:
-// 				fmt.Println("tempo", *u)
-// 			case *gotar_hero.TSChange:
-// 				fmt.Println("ts", *u)
-// 			}
-// 		}
-
-// 		fmt.Println("")
-
-// 		cursor.AdvanceTick(adv)
-// 	}
+// if err != nil {
+// panic(err.Error())
+// }
+// skip BOM
+// file.Seek(3, 0)
+// uchart, err := gotar_hero.ParseRaw(file)
+// if err != nil {
+// panic(err.Error())
+// }
+// log.SetLevel(log.DebugLevel)
+// chart, err := gotar_hero.Parse(uchart)
+// if err != nil {
+// panic(err.Error())
+// }
+// cursor, err := gotar_hero.NewChartCursor(*chart, "ExpertSingle")
+// fmt.Println("resolution", chart.Resolution)
+// for {
+// t, adv := cursor.NextEvent()
+// if len(t) == 0 {
+// break
+// }
+// for i := range t {
+// switch u := t[i].(type) {
+// case []gotar_hero.Note:
+// fmt.Println("note", u)
+// case *gotar_hero.TempoChange:
+// fmt.Println("tempo", *u)
+// case *gotar_hero.TSChange:
+// fmt.Println("ts", *u)
+// }
+// }
+// fmt.Println("")
+// cursor.AdvanceTick(adv)
+// adv_time := float64(adv) / cursor.CurrentTicksPerSecond() * 1000_000
+// time.Sleep(time.Microsecond * time.Duration(adv_time))
+// }
