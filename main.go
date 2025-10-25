@@ -6,15 +6,13 @@ package main
 import (
 	"context"
 	"errors"
-	"fmt"
-	"log/slog"
 	"net"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
-	"github.com/charmbracelet/bubbles/stopwatch"
+	_ "github.com/charmbracelet/bubbles/stopwatch"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/log"
@@ -68,63 +66,95 @@ func teaHandler(s ssh.Session) (tea.Model, []tea.ProgramOption) {
 	pty, _, _ := s.Pty()
 
 	renderer := bubbletea.MakeRenderer(s)
-	txtStyle := renderer.NewStyle().Foreground(lipgloss.Color("10"))
-	quitStyle := renderer.NewStyle().Foreground(lipgloss.Color("8"))
 
 	bg := "light"
 	if renderer.HasDarkBackground() {
 		bg = "dark"
 	}
 
-	m := model{
-		term:      pty.Term,
-		profile:   renderer.ColorProfile().Name(),
-		width:     pty.Window.Width,
-		height:    pty.Window.Height,
-		bg:        bg,
-		txtStyle:  txtStyle,
-		quitStyle: quitStyle,
-		stopwatch: stopwatch.NewWithInterval(time.Millisecond),
+	m := Menu{
+		term:     pty.Term,
+		profile:  renderer.ColorProfile().Name(),
+		width:    pty.Window.Width,
+		height:   pty.Window.Height,
+		bg:       bg,
+		renderer: renderer,
 	}
 	return m, []tea.ProgramOption{tea.WithAltScreen()}
 }
 
 // Just a generic tea.Model to demo terminal information of ssh.
-type model struct {
-	term      string
-	profile   string
-	width     int
-	height    int
-	bg        string
-	txtStyle  lipgloss.Style
-	quitStyle lipgloss.Style
-	stopwatch stopwatch.Model
+type Menu struct {
+	term     string
+	profile  string
+	width    int
+	height   int
+	bg       string
+	renderer *lipgloss.Renderer
 }
 
-func (m model) Init() tea.Cmd {
-	return m.stopwatch.Init()
+func (m Menu) Init() tea.Cmd {
+	return nil
 }
 
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.WindowSizeMsg:
-		m.height = msg.Height
-		m.width = msg.Width
-	case tea.KeyMsg:
-		switch msg.String() {
-		case "q", "ctrl+c":
-			return m, tea.Quit
-		}
-	case stopwatch.TickMsg:
-		slog.Info("Tick!")
-	}
-	var cmd tea.Cmd
-	m.stopwatch, cmd = m.stopwatch.Update(msg)
-	return m, cmd
+func (m Menu) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	return m, nil
 }
 
-func (m model) View() string {
-	s := m.stopwatch.View()
-	s += fmt.Sprintf("Your term is %s\nYour window size is %dx%d\nBackground: %s\nColor Profile: %s\n", m.term, m.width, m.height, m.bg, m.profile)
-	return m.txtStyle.Render(s) + "\n\n" + m.quitStyle.Render("Press 'q' to quit\n")
+const guitar = `
+ _                      _             _                        
+| |_ ___ _ __ _ __ ___ (_)_ __   __ _| |   /\  /\___ _ __ ___  
+| __/ _ \ '__| '_ ` + "`" + ` _ \| | '_ \ / _` + "`" + ` | |  / /_/ / _ \ '__/ _ \ 
+| ||  __/ |  | | | | | | | | | | (_| | | / __  /  __/ | | (_) |
+ \__\___|_|  |_| |_| |_|_|_| |_|\__,_|_| \/ /_/ \___|_|  \___/ 
+                                                                                                                              
+                        ░░░░
+                  ░░▓▓▓▓░░
+                  ▓▓▓▓▓▓
+                ██▓▓▓▓
+                ██▓▓▓▓▒▒
+              ▒▒▓▓▓▓▓▓▓▓
+              ▒▒▓▓▓▓▓▓▓▓
+              ▓▓▓▓▓▓▓▓░░
+              ░░▓▓▓▓▓▓
+                ▓▓██▓▓
+                ▓▓▓▓▓▓
+                ████▓▓
+                ██▓▓▓▓
+                ██▓▓▓▓
+                ██▓▓▓▓
+                ██▓▓▓▓
+                ██▓▓▓▓
+                ▓▓▓▓▓▓
+                ██▓▓▓▓
+                ██▓▓▓▓
+                ██▓▓▓▓
+                ██▓▓▓▓
+                ██▓▓▓▓
+      ░░        ██▓▓▒▒
+  ░░▓▓▓▓        ██▓▓▓▓
+  ▓▓▓▓▓▓        ██▓▓▓▓
+  ▓▓▓▓▓▓▓▓    ░░▓▓▓▓▓▓
+  ▒▒▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓        ▓▓▓▓░░
+  ░░▓▓▓▓▓▓▓▓░░░░▓▓▓▓▓▓      ▒▒░░░░
+    ▓▓▓▓▓▓▓▓▒▒        ▓▓▓▓▒▒░░  ░░
+    ▓▓▓▓▓▓▓▓            ░░      ▒▒
+    ▒▒▓▓▓▓▓▓▒▒▒▒██████          ▒▒
+      ▓▓▓▓▓▓                  ▒▒
+    ░░▓▓▓▓▓▓  ▒▒██████        ▓▓
+    ▓▓▓▓▓▓░░
+  ░░▓▓▓▓▓▓    ████              ▓▓
+  ▓▓▓▓▓▓▓▓        ████  ██      ░░▓▓
+  ▓▓▓▓▓▓▓▓░░  ░░▒▒▒▒▒▒      ██▓▓  ▒▒
+▓▓▓▓▓▓▓▓▓▓▓▓▓▓▒▒▓▓▓▓▓▓▓▓▓▓▒▒░░  ██░░▒▒
+▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░  ▓▓
+▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓
+▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓
+░░▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░
+  ░░▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▒▒
+          ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░
+`
+
+func (m Menu) View() string {
+	return guitar
 }
