@@ -20,6 +20,7 @@ import (
 	"github.com/charmbracelet/wish/v2/activeterm"
 	"github.com/charmbracelet/wish/v2/bubbletea"
 	"github.com/charmbracelet/wish/v2/logging"
+	gotar_hero "github.com/mbund/terminal-hero/pkg/gotar-hero"
 )
 
 const (
@@ -64,9 +65,26 @@ func teaHandler(s ssh.Session) (tea.Model, []tea.ProgramOption) {
 	// This should never fail, as we are using the activeterm middleware.
 	pty, _, _ := s.Pty()
 
-	m := Menu{
-		width:  pty.Window.Width,
-		height: pty.Window.Height,
+	chart, err := gotar_hero.OpenChart("notes.chart")
+	if err != nil {
+		panic(err.Error())
+	}
+	chart2, err := gotar_hero.OpenChart("notes2.chart")
+	if err != nil {
+		panic(err.Error())
+	}
+	chart3, err := gotar_hero.OpenChart("notes3.chart")
+	if err != nil {
+		panic(err.Error())
+	}
+
+	songs := []Song{NewSong(*chart), NewSong(*chart2), NewSong(*chart3)}
+
+	m := SongSelect{
+		width:    pty.Window.Width,
+		height:   pty.Window.Height,
+		selected: 0,
+		songs:    songs,
 	}
 	return m, []tea.ProgramOption{}
 }

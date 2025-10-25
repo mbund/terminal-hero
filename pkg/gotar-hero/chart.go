@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"os"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -449,40 +450,20 @@ func (cursor ChartCursor) NextEvent() ([]any, int) {
 	return out, min_adv
 }
 
-// file, err := os.Open("notes.chart")
-// 	if err != nil {
-// 		panic(err.Error())
-// 	}
-// 	// skip BOM
-// 	file.Seek(3, 0)
-// 	uchart, err := gotar_hero.ParseRaw(file)
-// 	if err != nil {
-// 		panic(err.Error())
-// 	}
-// 	log.SetLevel(log.DebugLevel)
-// 	chart, err := gotar_hero.Parse(uchart)
-// 	if err != nil {
-// 		panic(err.Error())
-// 	}
-// 	cursor, err := gotar_hero.NewChartCursor(*chart, "ExpertSingle")
-
-// 	for {
-// 		t, adv := cursor.NextEvent()
-// 		if len(t) == 0 {
-// 			break
-// 		}
-// 		for i := range t {
-// 			switch u := t[i].(type) {
-// 			case []gotar_hero.Note:
-// 				fmt.Println("note", u)
-// 			case *gotar_hero.TempoChange:
-// 				fmt.Println("tempo", *u)
-// 			case *gotar_hero.TSChange:
-// 				fmt.Println("ts", *u)
-// 			}
-// 		}
-
-// 		fmt.Println("")
-
-// 		cursor.AdvanceTick(adv)
-// 	}
+func OpenChart(filename string) (*Chart, error) {
+	file, err := os.Open(filename)
+	if err != nil {
+		panic(err.Error())
+	}
+	// skip BOM
+	file.Seek(3, 0)
+	uchart, err := ParseRaw(file)
+	if err != nil {
+		return nil, err
+	}
+	chart, err := Parse(uchart)
+	if err != nil {
+		return nil, err
+	}
+	return chart, nil
+}
