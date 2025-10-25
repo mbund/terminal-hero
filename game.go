@@ -33,25 +33,47 @@ func (m Game) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Game) View() tea.View {
-	y := int(m.stopwatch.Elapsed().Seconds())
+	y2 := int(m.stopwatch.Elapsed().Seconds() * 2)
+	y := y2 / 2
+	ymod := y2 % 2
 
 	result := ""
 
-	top := "\u2597\u2588\u2588\u2596"
-	middle := "\u2588\u2588\u2588\u2588"
-	bottom := "\u259d\u2588\u2588\u2598"
+	a1 := "\u2597\u2588\u2588\u2596"
+	a2 := "\u2588\u2588\u2588\u2588"
+	a3 := "\u259d\u2588\u2588\u2598"
+	b1 := " \u2584\u2584 "
+	b2 := "\u259f\u2588\u2588\u2599"
+	b3 := "\u259c\u2588\u2588\u259b"
+	b4 := " \u2580\u2580 "
 
 	for i := range 20 {
-		diff := i - y
-		switch diff {
-		case -1:
-			result += top
+		diff := (i - y)
+		switch ymod {
 		case 0:
-			result += middle
+			switch diff {
+			case -1:
+				result += a1
+			case 0:
+				result += a2
+			case 1:
+				result += a3
+			default:
+				result += "    "
+			}
 		case 1:
-			result += bottom
-		default:
-			result += bottom
+			switch diff {
+			case -1:
+				result += b1
+			case 0:
+				result += b2
+			case 1:
+				result += b3
+			case 2:
+				result += b4
+			default:
+				result += "    "
+			}
 
 		}
 		result += "\n"
