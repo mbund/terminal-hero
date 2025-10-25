@@ -5,7 +5,10 @@ tasks:
     cmds:
       - go run .
 
-
   play:
     cmds:
       - ssh -o StrictHostKeyChecking=no -p 23234 localhost
+
+  audio:
+    cmds:
+      - ssh -T -p 23234 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no 100.107.230.44 | aplay -f S16_LE -c 2 -r 44100 --buffer-size 1024

@@ -15,9 +15,12 @@ type Menu struct {
 	width    int
 	height   int
 	selected int
+	mixer    *AudioMixer
 }
 
 func (m Menu) Init() tea.Cmd {
+	log.Info("CALLING THE PLAY FUNCTION")
+	_, _ = m.mixer.Play("audio.raw", 1.0)
 	return nil
 }
 
@@ -41,7 +44,7 @@ func (m Menu) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case BUTTON_QUIT:
 				return m, tea.Quit
 			case BUTTON_PLAY:
-				game := Game{width: m.width, height: m.height, stopwatch: stopwatch.New(stopwatch.WithInterval(10 * time.Millisecond))}
+				game := Game{width: m.width, height: m.height, stopwatch: stopwatch.New(stopwatch.WithInterval(10 * time.Millisecond)), mixer: m.mixer}
 				return game, game.Init()
 			}
 		}

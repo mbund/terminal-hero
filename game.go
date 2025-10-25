@@ -10,6 +10,7 @@ type Game struct {
 	width     int
 	height    int
 	stopwatch stopwatch.Model
+	mixer     *AudioMixer
 }
 
 func (m Game) Init() tea.Cmd {
@@ -39,38 +40,32 @@ func (m Game) View() tea.View {
 
 	result := ""
 
-	a1 := "\u2597\u2588\u2588\u2596"
+	a1 := "\u2588\u2588\u2588\u2588"
 	a2 := "\u2588\u2588\u2588\u2588"
-	a3 := "\u259d\u2588\u2588\u2598"
-	b1 := " \u2584\u2584 "
-	b2 := "\u259f\u2588\u2588\u2599"
-	b3 := "\u259c\u2588\u2588\u259b"
-	b4 := " \u2580\u2580 "
+	b1 := "\u2584\u2584\u2584\u2584"
+	b2 := "\u2588\u2588\u2588\u2588"
+	b3 := "\u2580\u2580\u2580\u2580"
 
 	for i := range 20 {
 		diff := (i - y)
 		switch ymod {
 		case 0:
 			switch diff {
-			case -1:
-				result += a1
 			case 0:
-				result += a2
+				result += a1
 			case 1:
-				result += a3
+				result += a2
 			default:
 				result += "    "
 			}
 		case 1:
 			switch diff {
-			case -1:
-				result += b1
 			case 0:
-				result += b2
+				result += b1
 			case 1:
-				result += b3
+				result += b2
 			case 2:
-				result += b4
+				result += b3
 			default:
 				result += "    "
 			}
