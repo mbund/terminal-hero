@@ -33,7 +33,29 @@ func (m Game) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Game) View() tea.View {
-	result := m.stopwatch.Elapsed().String()
+	y := int(m.stopwatch.Elapsed().Seconds())
+
+	result := ""
+
+	top := "\u2597\u2588\u2588\u2596"
+	middle := "\u2588\u2588\u2588\u2588"
+	bottom := "\u259d\u2588\u2588\u2598"
+
+	for i := range 20 {
+		diff := i - y
+		switch diff {
+		case -1:
+			result += top
+		case 0:
+			result += middle
+		case 1:
+			result += bottom
+		default:
+			result += bottom
+
+		}
+		result += "\n"
+	}
 
 	view := tea.NewView(result)
 	view.KeyReleases = true
