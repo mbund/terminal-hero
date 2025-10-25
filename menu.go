@@ -3,9 +3,12 @@ package main
 import (
 	"fmt"
 	"strings"
+	"time"
 
+	"github.com/charmbracelet/bubbles/v2/stopwatch"
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/lipgloss/v2"
+	"github.com/charmbracelet/log"
 )
 
 type Menu struct {
@@ -38,13 +41,15 @@ func (m Menu) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case BUTTON_QUIT:
 				return m, tea.Quit
 			case BUTTON_PLAY:
-				return Game{width: m.width, height: m.height}, nil
+				game := Game{width: m.width, height: m.height, stopwatch: stopwatch.New(stopwatch.WithInterval(10 * time.Millisecond))}
+				return game, game.Init()
 			}
 		}
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	}
+	log.Info("MENU MODEL UPDATE")
 	return m, nil
 }
 

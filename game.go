@@ -1,10 +1,9 @@
 package main
 
 import (
-	"log/slog"
-
 	stopwatch "github.com/charmbracelet/bubbles/v2/stopwatch"
 	tea "github.com/charmbracelet/bubbletea/v2"
+	"github.com/charmbracelet/log"
 )
 
 type Game struct {
@@ -20,18 +19,21 @@ func (m Game) Init() tea.Cmd {
 func (m Game) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
-		slog.Info("key press", "key", msg.Key())
+		log.Info("key press", "key", msg.Key())
 	case tea.KeyReleaseMsg:
-		slog.Info("key release", "key", msg.Key())
+		log.Info("key release", "key", msg.Key())
+		return m, m.stopwatch.Start()
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	}
-	return m, nil
+	var cmd tea.Cmd
+	m.stopwatch, cmd = m.stopwatch.Update(msg)
+	return m, cmd
 }
 
 func (m Game) View() tea.View {
-	result := "🬗"
+	result := m.stopwatch.Elapsed().String()
 
 	view := tea.NewView(result)
 	view.KeyReleases = true
