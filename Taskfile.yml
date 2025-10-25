@@ -1,0 +1,11 @@
+version: "3"
+
+tasks:
+  run:
+    cmds:
+      - go run .
+
+
+  play:
+    cmds:
+      - ssh -o StrictHostKeyChecking=no -p 23234 localhost
