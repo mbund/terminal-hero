@@ -34,45 +34,31 @@ func (m Game) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Game) View() tea.View {
-	y2 := int(m.stopwatch.Elapsed().Seconds() * 2)
-	y := y2 / 2
-	ymod := y2 % 2
+	x2 := int(m.stopwatch.Elapsed().Seconds() * 8)
+	x := x2 / 2
+	mod := x2 % 2
 
 	result := ""
 
-	a1 := "\u2588\u2588\u2588\u2588"
-	a2 := "\u2588\u2588\u2588\u2588"
-	b1 := "\u2584\u2584\u2584\u2584"
-	b2 := "\u2588\u2588\u2588\u2588"
-	b3 := "\u2580\u2580\u2580\u2580"
+	a := []rune("\u2588\u2588\u2588\u2588 ")
+	b := []rune("\u2590\u2588\u2588\u2588\u258c")
 
-	for i := range 20 {
-		diff := (i - y)
-		switch ymod {
-		case 0:
-			switch diff {
-			case 0:
-				result += a1
-			case 1:
-				result += a2
-			default:
-				result += "    "
+	width := 100
+	result += "                                                         ┌────┐\n"
+	line := make([]rune, width)
+	for i := range width {
+		line[i] = ' '
+		if i >= x && i-x < 5 {
+			if mod == 0 {
+				line[i] = a[i-x]
+			} else {
+				line[i] = b[i-x]
 			}
-		case 1:
-			switch diff {
-			case 0:
-				result += b1
-			case 1:
-				result += b2
-			case 2:
-				result += b3
-			default:
-				result += "    "
-			}
-
 		}
-		result += "\n"
 	}
+	result += string(line) + "\n"
+	result += string(line) + "\n"
+	result += "                                                         └────┘\n"
 
 	view := tea.NewView(result)
 	view.KeyReleases = true
