@@ -49,22 +49,11 @@ func (m SongSelect) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "down", "j":
-			m.selected = m.selected + 1
-			if m.selected == len(m.songs) {
-				m.selected = 0
-			}
+			m.selected = m.songWrap(m.selected - 1)
 		case "up", "k":
-			m.selected = m.selected - 1
-			if m.selected == -1 {
-				m.selected = len(m.songs) - 1
-			}
+			m.selected = m.songWrap(m.selected + 1)
 		case "space", "enter":
-			switch m.selected {
-			case BUTTON_QUIT:
-				return m, tea.Quit
-			case BUTTON_PLAY:
-				return Game{width: m.width, height: m.height}, nil
-			}
+			fmt.Println("selected song", m.selected)
 		case "q":
 			return m, tea.Quit
 		}
@@ -76,11 +65,29 @@ func (m SongSelect) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m SongSelect) View() tea.View {
-	selected_song := m.songs[m.selected]
+func (m SongSelect) songWrap(i int) int {
+	if i >= len(m.songs) {
+		return i - len(m.songs)
+	}
+	if i < 0 {
+		return i + len(m.songs)
+	}
+	return i
+}
 
-	s := lipgloss.NewStyle().SetString(fmt.Sprintf("%v: %v\nArtist: %v\nGenre: %v", m.selected, selected_song.Title, selected_song.Artist, selected_song.Genre))
-	result := lipgloss.Place(m.width, m.height, 0.5, 0.5, s.Render())
+func (m SongSelect) View() tea.View {
+	previousSong := m.songs[m.songWrap(m.selected-1)]
+	selectedSong := m.songs[m.selected]
+	nextSong := m.songs[m.songWrap(m.selected+1)]
+
+	lipgloss.NewStyle().Render("")
+
+	s1 := lipgloss.NewStyle().SetString(fmt.Sprintf("%v: %v\nArtist: %v\nGenre: %v", m.songWrap(m.selected-1), previousSong.Title, previousSong.Artist, previousSong.Genre)).Border(lipgloss.NormalBorder()).BorderTop(false).BorderBottom(false).BorderRight(false).BorderLeft(true).PaddingLeft(1)
+	s2 := lipgloss.NewStyle().SetString(fmt.Sprintf("%v: %v\nArtist: %v\nGenre: %v", m.selected, selectedSong.Title, selectedSong.Artist, selectedSong.Genre)).Border(lipgloss.NormalBorder()).BorderTop(false).BorderBottom(false).BorderRight(false).BorderLeft(true).BorderForeground(lipgloss.BrightMagenta).Bold(true).PaddingLeft(1)
+	s3 := lipgloss.NewStyle().SetString(fmt.Sprintf("%v: %v\nArtist: %v\nGenre: %v", m.songWrap(m.selected+1), nextSong.Title, nextSong.Artist, nextSong.Genre)).Border(lipgloss.NormalBorder()).BorderTop(false).BorderBottom(false).BorderRight(false).BorderLeft(true).PaddingLeft(1)
+
+	list := lipgloss.JoinVertical(0, s1.Render(), lipgloss.NewStyle().Render(""), s2.Render(), lipgloss.NewStyle().Render(""), s3.Render())
+	result := lipgloss.Place(m.width, m.height, 0.5, 0.5, list)
 	view := tea.NewView(result)
 	view.KeyReleases = true
 	return view
