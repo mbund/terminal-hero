@@ -9,7 +9,6 @@ import (
 )
 
 type Menu struct {
-	term     string
 	width    int
 	height   int
 	selected int
@@ -35,8 +34,11 @@ func (m Menu) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "up", "k":
 			m.selected = max(m.selected-1, 0)
 		case "space", "enter":
-			if m.selected == BUTTON_QUIT {
+			switch m.selected {
+			case BUTTON_QUIT:
 				return m, tea.Quit
+			case BUTTON_PLAY:
+				return Game{width: m.width, height: m.height}, nil
 			}
 		}
 	case tea.WindowSizeMsg:

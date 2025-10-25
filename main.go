@@ -13,7 +13,6 @@ import (
 	"syscall"
 	"time"
 
-	_ "github.com/charmbracelet/bubbles/stopwatch"
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/ssh"
@@ -66,7 +65,6 @@ func teaHandler(s ssh.Session) (tea.Model, []tea.ProgramOption) {
 	pty, _, _ := s.Pty()
 
 	m := Menu{
-		term:   pty.Term,
 		width:  pty.Window.Width,
 		height: pty.Window.Height,
 	}
