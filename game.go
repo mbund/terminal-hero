@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 
 	stopwatch "github.com/charmbracelet/bubbles/v2/stopwatch"
 	tea "github.com/charmbracelet/bubbletea/v2"
@@ -21,6 +22,8 @@ type Game struct {
 	positions    [][]float64
 	accTime      float64
 	startedAudio bool
+	strumming    bool
+	strumInfo    string
 }
 
 var (
@@ -33,9 +36,9 @@ func (m Game) Init() tea.Cmd {
 }
 
 func (m Game) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	m.strumming = false
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
-		log.Info("key press", "key", msg.Key())
 		switch msg.Key().Text {
 		case "1":
 			m.held[0] = true
@@ -47,6 +50,8 @@ func (m Game) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.held[3] = true
 		case "5":
 			m.held[4] = true
+		case "j", "k", "space":
+			m.strumming = true
 		case "q":
 			return m, tea.Quit
 		}
@@ -92,12 +97,10 @@ type rowColors struct {
 
 // postitions is an array of half-character coordinates
 func renderRow(charWidth int, positions []float64, held bool, colors rowColors) string {
-	// boxLeft := 8
-	// boxRight := 20
 	a := []rune("\u2588\u2588\u2588\u2588 ")
 	b := []rune("\u2590\u2588\u2588\u2588\u258c")
 	result := ""
-	result += lipgloss.NewStyle().Foreground(colors.boxBorder).Render("    ┌────┐") + "\n"
+	result += lipgloss.NewStyle().Foreground(colors.boxBorder).Render("   ┌──────┐") + "\n"
 	line := make([]rune, charWidth)
 	for i := range charWidth {
 		line[i] = ' '
@@ -119,7 +122,7 @@ func renderRow(charWidth int, positions []float64, held bool, colors rowColors) 
 			}
 		}
 	}
-	for _ = range 2 {
+	for range 2 {
 		if held {
 			result += lipgloss.NewStyle().Foreground(colors.note).Render(string(line[0:5]))
 			result += lipgloss.NewStyle().Foreground(colors.overlap).Background(colors.boxFill).Render(string(line[5:9]))
@@ -128,7 +131,7 @@ func renderRow(charWidth int, positions []float64, held bool, colors rowColors) 
 			result += lipgloss.NewStyle().Foreground(colors.note).Render(string(line)) + "\n"
 		}
 	}
-	result += lipgloss.NewStyle().Foreground(colors.boxBorder).Render("    └────┘") + "\n"
+	result += lipgloss.NewStyle().Foreground(colors.boxBorder).Render("   └──────┘") + "\n"
 	return result
 }
 
@@ -198,12 +201,49 @@ func (m *Game) update() {
 		advTime = float64(adv) * m.cursor.CurrentTicksPerSecond()
 	}
 
+	noteDist := make([]float64, 5)
 	for i := range 5 {
-		if m.positions[i] == nil {
-			m.positions[i] = make([]float64, 0.0)
+		oldPositions := m.positions[i]
+		noteDist[i] = math.NaN()
+		m.positions[i] = make([]float64, 0.0)
+		if oldPositions == nil {
+			continue
 		}
-		for j := range m.positions[i] {
-			m.positions[i][j] -= deltaTime * float64(NoteSpeed)
+
+		for j := range oldPositions {
+			targetPosition := 10.0
+			dist := math.Abs(oldPositions[j] - targetPosition)
+			if dist <= 8.0 {
+				noteDist[i] = dist
+				if m.strumming && m.held[i] {
+					continue
+				}
+			}
+			if oldPositions[j] >= -8.0 {
+				m.positions[i] = append(m.positions[i], oldPositions[j]-deltaTime*64.0)
+			} else {
+				m.strumInfo = fmt.Sprintf("miss %d", i)
+			}
+		}
+	}
+
+	if m.strumming {
+		m.strumInfo = ""
+		for i := range 5 {
+			if m.held[i] {
+				if math.IsNaN(noteDist[i]) {
+					m.strumInfo += fmt.Sprintf("false positive %d; ", i)
+				} else {
+					m.strumInfo += fmt.Sprintf("distance %d %f; ", i, noteDist[i])
+				}
+			} else {
+				if math.IsNaN(noteDist[i]) {
+					// true negative
+				} else {
+					m.strumInfo += fmt.Sprintf("false negative %d; ", i)
+				}
+			}
+
 		}
 	}
 
@@ -221,7 +261,7 @@ func (m Game) View() tea.View {
 	greens := rowColors{
 		boxBorder: green,
 		note:      green,
-		boxFill:   lighten(green, 20),
+		boxFill:   lighten(green, 30),
 		overlap:   green,
 	}
 
@@ -229,7 +269,7 @@ func (m Game) View() tea.View {
 	reds := rowColors{
 		boxBorder: red,
 		note:      red,
-		boxFill:   lighten(red, 20),
+		boxFill:   lighten(red, 30),
 		overlap:   red,
 	}
 
@@ -237,7 +277,7 @@ func (m Game) View() tea.View {
 	yellows := rowColors{
 		boxBorder: yellow,
 		note:      yellow,
-		boxFill:   lighten(yellow, 20),
+		boxFill:   lighten(yellow, 30),
 		overlap:   yellow,
 	}
 
@@ -245,7 +285,7 @@ func (m Game) View() tea.View {
 	blues := rowColors{
 		boxBorder: blue,
 		note:      blue,
-		boxFill:   lighten(blue, 20),
+		boxFill:   lighten(blue, 30),
 		overlap:   blue,
 	}
 
@@ -257,7 +297,9 @@ func (m Game) View() tea.View {
 		overlap:   orange,
 	}
 
-	result := renderRow(m.width, m.positions[0], m.held[0], greens)
+	result := m.strumInfo + "\n"
+
+	result += renderRow(m.width, m.positions[0], m.held[0], greens)
 	result += renderRow(m.width, m.positions[1], m.held[1], reds)
 	result += renderRow(m.width, m.positions[2], m.held[2], yellows)
 	result += renderRow(m.width, m.positions[3], m.held[3], blues)
