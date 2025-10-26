@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"math"
+	"strconv"
 
 	stopwatch "github.com/charmbracelet/bubbles/v2/stopwatch"
 	tea "github.com/charmbracelet/bubbletea/v2"
@@ -10,6 +11,11 @@ import (
 	"github.com/charmbracelet/log"
 	gotar_hero "github.com/mbund/terminal-hero/pkg/gotar-hero"
 )
+
+type NotePos struct {
+	position float64
+	length   float64
+}
 
 type Game struct {
 	width        int
@@ -19,11 +25,12 @@ type Game struct {
 	held         []bool
 	cursor       gotar_hero.ChartCursor
 	prevTime     float64
-	positions    [][]float64
+	notes        [][]NotePos
 	accTime      float64
 	startedAudio bool
 	strumming    bool
 	strumInfo    string
+	score        float64
 }
 
 var (
@@ -39,6 +46,7 @@ func (m Game) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.strumming = false
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
+		log.Info("pressed", "key", msg.Key().Text)
 		switch msg.Key().Text {
 		case "1":
 			m.held[0] = true
@@ -56,6 +64,7 @@ func (m Game) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 	case tea.KeyReleaseMsg:
+		log.Info("released", "key", msg.Key().Text)
 		switch msg.Key().Text {
 		case "1":
 			m.held[0] = false
@@ -100,9 +109,9 @@ type rowColors struct {
 }
 
 // postitions is an array of half-character coordinates
-func renderRow(charWidth int, positions []float64, held bool, colors rowColors) string {
-	a := []rune("\u2588\u2588\u2588\u2588 ")
-	b := []rune("\u2590\u2588\u2588\u2588\u258c")
+func renderRow(charWidth int, positions []NotePos, held bool, colors rowColors, ticks_per_char float64) string {
+	// a := []rune("\u2588\u2588\u2588\u2588 ")
+	// b := []rune("\u2590\u2588\u2588\u2588\u258c")
 	result := ""
 	result += lipgloss.NewStyle().Foreground(colors.boxBorder).Render("   ┌──────┐") + "\n"
 	line := make([]rune, charWidth)
@@ -110,18 +119,25 @@ func renderRow(charWidth int, positions []float64, held bool, colors rowColors) 
 		line[i] = ' '
 	}
 	for _, pos := range positions {
-		posChar := floordiv(int(pos), 2)
-		posMod := mod(int(pos), 2)
+		posChar := floordiv(int(pos.position), 2)
+		posMod := mod(int(pos.position), 2)
+		char_len := max(5, int(pos.length/ticks_per_char))
 		if posMod == 0 {
-			for i := range 5 {
+			for i := range char_len {
 				if posChar+i >= 0 && posChar+i < charWidth {
-					line[posChar+i] = a[i]
+					line[posChar+i] = '\u2588'
 				}
 			}
 		} else {
-			for i := range 5 {
+			for i := range char_len {
 				if posChar+i >= 0 && posChar+i < charWidth {
-					line[posChar+i] = b[i]
+					if i == 0 {
+						line[posChar+i] = '\u2590'
+					}
+					if i == charWidth {
+						line[posChar+i] = '\u258c'
+					}
+					line[posChar+i] = '\u2588'
 				}
 			}
 		}
@@ -172,7 +188,7 @@ func (m *Game) handleEvents(events []any) {
 					// silently discared bad notes
 					continue
 				}
-				m.positions[note.Typ] = append(m.positions[note.Typ], float64(NoteSpawn))
+				m.notes[note.Typ] = append(m.notes[note.Typ], NotePos{float64(NoteSpawn), float64(note.Len)})
 			}
 			// notes
 		case *gotar_hero.TempoChange:
@@ -197,7 +213,7 @@ func (m *Game) update() bool {
 
 	// if we have accumalated more time than needs to be advanced
 	// we need to consume these events
-	log.Info("tick", "adv", adv)
+	// log.Info("tick", "adv", adv)
 	for m.accTime >= advTime && adv > 0 {
 		// consume the events
 		m.handleEvents(events)
@@ -210,31 +226,52 @@ func (m *Game) update() bool {
 
 	noteDist := make([]float64, 5)
 	for i := range 5 {
-		oldPositions := m.positions[i]
+		oldPositions := m.notes[i]
 		noteDist[i] = math.NaN()
-		m.positions[i] = make([]float64, 0.0)
+		m.notes[i] = make([]NotePos, 0.0)
 		if oldPositions == nil {
 			continue
 		}
 
 		for j := range oldPositions {
 			targetPosition := 10.0
-			dist := math.Abs(oldPositions[j] - targetPosition)
-			if dist <= 8.0 {
+			dist := math.Abs(oldPositions[j].position - targetPosition)
+			if dist <= 32.0 && oldPositions[j].length == 0 {
 				noteDist[i] = dist
+				// delete hit notes that are 0 length
 				if m.strumming && m.held[i] {
-					continue
+					log.Info("hit note", "note", i, "dist", dist)
+					m.score += 40 * (32 - dist)
 				}
 			}
-			if oldPositions[j] >= -32.0 {
-				m.positions[i] = append(m.positions[i], oldPositions[j]-deltaTime*float64(NoteSpeed))
-			} else {
+
+			secondsPerChar := 2.0 / float64(NoteSpeed)
+
+			ticksPerChar := m.cursor.CurrentTicksPerSecond() * secondsPerChar
+
+			after := targetPosition - oldPositions[j].position
+			if after < oldPositions[j].length/ticksPerChar && after > 0 {
+				// we are in the note
+				if m.strumming && m.held[i] {
+					m.score += deltaTime * 100.0
+					log.Info("strumming in held note", "dt", deltaTime, "score", m.score)
+					// make this not NaN so this is not considered a false positive
+					noteDist[i] = 0
+				}
+			}
+
+			if oldPositions[j].position+oldPositions[j].length >= -32.0 {
+				m.notes[i] = append(m.notes[i], NotePos{oldPositions[j].position - deltaTime*float64(NoteSpeed), oldPositions[j].length})
+			} else if oldPositions[j].length != 0 {
+				// for now just ignore missed long notes
+				log.Info("missed", "note", i)
 				m.strumInfo = fmt.Sprintf("miss %d", i)
+				m.score -= 50
 			}
 		}
 	}
 
-	total_positions := len(m.positions[0]) + len(m.positions[2]) + len(m.positions[3]) + len(m.positions[4])
+	total_positions := len(m.notes[0]) + len(m.notes[2]) + len(m.notes[3]) + len(m.notes[4])
 
 	if adv == 0 {
 		log.Info("no more events", "positions left", total_positions)
@@ -317,13 +354,17 @@ func (m Game) View() tea.View {
 		overlap:   orange,
 	}
 
-	result := m.strumInfo + "\n"
+	result := m.strumInfo + " score: " + strconv.Itoa(int(m.score)) + "\n"
 
-	result += renderRow(m.width, m.positions[0], m.held[0], greens)
-	result += renderRow(m.width, m.positions[1], m.held[1], reds)
-	result += renderRow(m.width, m.positions[2], m.held[2], yellows)
-	result += renderRow(m.width, m.positions[3], m.held[3], blues)
-	result += renderRow(m.width, m.positions[4], m.held[4], oranges)
+	secondsPerChar := 2.0 / float64(NoteSpeed)
+
+	ticksPerChar := m.cursor.CurrentTicksPerSecond() * secondsPerChar
+
+	result += renderRow(m.width, m.notes[0], m.held[0], greens, ticksPerChar)
+	result += renderRow(m.width, m.notes[1], m.held[1], reds, ticksPerChar)
+	result += renderRow(m.width, m.notes[2], m.held[2], yellows, ticksPerChar)
+	result += renderRow(m.width, m.notes[3], m.held[3], blues, ticksPerChar)
+	result += renderRow(m.width, m.notes[4], m.held[4], oranges, ticksPerChar)
 
 	view := tea.NewView(result)
 	view.KeyReleases = true
