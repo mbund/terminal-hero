@@ -20,7 +20,6 @@ import (
 	"github.com/charmbracelet/wish/v2/activeterm"
 	"github.com/charmbracelet/wish/v2/bubbletea"
 	"github.com/charmbracelet/wish/v2/logging"
-	gotar_hero "github.com/mbund/terminal-hero/pkg/gotar-hero"
 )
 
 const (
@@ -65,26 +64,13 @@ func teaHandler(s ssh.Session) (tea.Model, []tea.ProgramOption) {
 	// This should never fail, as we are using the activeterm middleware.
 	pty, _, _ := s.Pty()
 
-	chart, err := gotar_hero.OpenChart("notes.chart")
-	if err != nil {
-		panic(err.Error())
+	m := Leaderboard{
+		width:   pty.Window.Width,
+		height:  pty.Window.Height,
+		song:    "Song Name",
+		entries: []LeadeboardEntry{{"Rock God", 100000, "key1"}, {"The Guitar Hero", 90000, "key2"}, {"EPIC Gamer", 80000, "key3"}, {"s t e v e", 70000, "key3"}, {"anonymous", 65000, "key4"}, {"John Wick", 60000, "key5"}, {"Gandalf", 55000, "key6"}},
 	}
-	chart2, err := gotar_hero.OpenChart("notes2.chart")
-	if err != nil {
-		panic(err.Error())
-	}
-	chart3, err := gotar_hero.OpenChart("notes3.chart")
-	if err != nil {
-		panic(err.Error())
-	}
-
-	songs := []Song{NewSong(*chart), NewSong(*chart2), NewSong(*chart3)}
-
-	m := SongSelect{
-		width:    pty.Window.Width,
-		height:   pty.Window.Height,
-		selected: 0,
-		songs:    songs,
-	}
+	m.AddEntry(LeadeboardEntry{"GOAT", 200000, "key4"})
+	m.AddEntry(LeadeboardEntry{"Mark", 75000, "key7"})
 	return m, []tea.ProgramOption{}
 }
