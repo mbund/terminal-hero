@@ -36,6 +36,8 @@ func (m Game) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.held[3] = true
 		case "5":
 			m.held[4] = true
+		case "q":
+			return m, tea.Quit
 		}
 	case tea.KeyReleaseMsg:
 		switch msg.Key().Text {
@@ -49,8 +51,6 @@ func (m Game) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.held[3] = false
 		case "5":
 			m.held[4] = false
-		case "q":
-			return m, tea.Quit
 		}
 
 	case tea.WindowSizeMsg:
