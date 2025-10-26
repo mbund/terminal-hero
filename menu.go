@@ -56,7 +56,7 @@ func (m Menu) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case BUTTON_QUIT:
 				return m, tea.Quit
 			case BUTTON_PLAY:
-				game := Game{width: m.width, height: m.height, stopwatch: stopwatch.New(stopwatch.WithInterval(10 * time.Millisecond)), mixer: m.mixer, held: make([]bool, 5)}
+				game := Game{width: m.width, height: m.height, stopwatch: stopwatch.New(stopwatch.WithInterval(10 * time.Millisecond)), mixer: m.mixer, held: make([]bool, 5), positions: make([][]float64, 5)}
 				return game, game.Init()
 			}
 		}

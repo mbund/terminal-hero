@@ -7,6 +7,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/log"
+	gotar_hero "github.com/mbund/terminal-hero/pkg/gotar-hero"
 )
 
 type Game struct {
@@ -15,6 +16,9 @@ type Game struct {
 	stopwatch stopwatch.Model
 	mixer     *AudioMixer
 	held      []bool
+	cursor    gotar_hero.ChartCursor
+	prevTime  float64
+	positions [][]float64
 }
 
 func (m Game) Init() tea.Cmd {
@@ -59,6 +63,8 @@ func (m Game) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 	var cmd tea.Cmd
 	m.stopwatch, cmd = m.stopwatch.Update(msg)
+	m.update()
+
 	return m, cmd
 }
 
@@ -78,7 +84,7 @@ type rowColors struct {
 }
 
 // postitions is an array of half-character coordinates
-func renderRow(charWidth int, positions []int, held bool, colors rowColors) string {
+func renderRow(charWidth int, positions []float64, held bool, colors rowColors) string {
 	// boxLeft := 8
 	// boxRight := 20
 	a := []rune("\u2588\u2588\u2588\u2588 ")
@@ -90,8 +96,8 @@ func renderRow(charWidth int, positions []int, held bool, colors rowColors) stri
 		line[i] = ' '
 	}
 	for _, pos := range positions {
-		posChar := floordiv(pos, 2)
-		posMod := mod(pos, 2)
+		posChar := floordiv(int(pos), 2)
+		posMod := mod(int(pos), 2)
 		if posMod == 0 {
 			for i := range 5 {
 				if posChar+i >= 0 && posChar+i < charWidth {
@@ -142,8 +148,27 @@ func lighten(c lipgloss.Color, percent float64) lipgloss.Color {
 	return lipgloss.Color(fmt.Sprintf("#%02x%02x%02x", r2, g2, b2))
 }
 
+func (m *Game) update() {
+	newTime := m.stopwatch.Elapsed().Seconds()
+	deltaTime := newTime - m.prevTime
+
+	for i := range 5 {
+		if m.positions[i] == nil {
+			m.positions[i] = make([]float64, 0.0)
+		}
+		for j := range m.positions[i] {
+			m.positions[i][j] -= deltaTime * 64.0
+		}
+	}
+
+	if m.prevTime == 0 {
+		m.positions[1] = append(m.positions[1], 100)
+	}
+
+	m.prevTime = newTime
+}
+
 func (m Game) View() tea.View {
-	x2 := int(m.stopwatch.Elapsed().Seconds() * 40)
 
 	green := lipgloss.Color("#19a11b")
 	greens := rowColors{
@@ -185,11 +210,11 @@ func (m Game) View() tea.View {
 		overlap:   orange,
 	}
 
-	result := renderRow(m.width, []int{100 - x2, 200 - x2, 300 - x2}, m.held[0], greens)
-	result += renderRow(m.width, []int{100 - x2, 200 - x2, 300 - x2}, m.held[1], reds)
-	result += renderRow(m.width, []int{100 - x2, 200 - x2, 300 - x2}, m.held[2], yellows)
-	result += renderRow(m.width, []int{100 - x2, 200 - x2, 300 - x2}, m.held[3], blues)
-	result += renderRow(m.width, []int{100 - x2, 200 - x2, 300 - x2}, m.held[4], oranges)
+	result := renderRow(m.width, m.positions[0], m.held[0], greens)
+	result += renderRow(m.width, m.positions[1], m.held[1], reds)
+	result += renderRow(m.width, m.positions[2], m.held[2], yellows)
+	result += renderRow(m.width, m.positions[3], m.held[3], blues)
+	result += renderRow(m.width, m.positions[4], m.held[4], oranges)
 
 	view := tea.NewView(result)
 	view.KeyReleases = true
