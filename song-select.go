@@ -82,9 +82,9 @@ func (m SongSelect) View() tea.View {
 
 	lipgloss.NewStyle().Render("")
 
-	s1 := lipgloss.NewStyle().SetString(fmt.Sprintf("%6v: %32v\nArtist: %32v\nGenre : %32v", m.songWrap(m.selected-1), previousSong.Title, previousSong.Artist, previousSong.Genre)).Border(lipgloss.NormalBorder()).BorderTop(false).BorderBottom(false).BorderRight(false).BorderLeft(true).PaddingLeft(1)
-	s2 := lipgloss.NewStyle().SetString(fmt.Sprintf("%6v: %32v\nArtist: %32v\nGenre : %32v", m.selected, selectedSong.Title, selectedSong.Artist, selectedSong.Genre)).Border(lipgloss.NormalBorder()).BorderTop(false).BorderBottom(false).BorderRight(false).BorderLeft(true).BorderForeground(lipgloss.BrightMagenta).Bold(true).PaddingLeft(1)
-	s3 := lipgloss.NewStyle().SetString(fmt.Sprintf("%6v: %32v\nArtist: %32v\nGenre : %32v", m.songWrap(m.selected+1), nextSong.Title, nextSong.Artist, nextSong.Genre)).Border(lipgloss.NormalBorder()).BorderTop(false).BorderBottom(false).BorderRight(false).BorderLeft(true).PaddingLeft(1)
+	s1 := lipgloss.NewStyle().SetString(fmt.Sprintf("Title: %32v\nArtist: %32v\nGenre : %32v", previousSong.Title, previousSong.Artist, previousSong.Genre)).Border(lipgloss.NormalBorder()).BorderTop(false).BorderBottom(false).BorderRight(false).BorderLeft(true).PaddingLeft(1)
+	s2 := lipgloss.NewStyle().SetString(fmt.Sprintf("Title: %32v\nArtist: %32v\nGenre : %32v", selectedSong.Title, selectedSong.Artist, selectedSong.Genre)).Border(lipgloss.NormalBorder()).BorderTop(false).BorderBottom(false).BorderRight(false).BorderLeft(true).BorderForeground(lipgloss.BrightMagenta).Bold(true).PaddingLeft(1)
+	s3 := lipgloss.NewStyle().SetString(fmt.Sprintf("Title: %32v\nArtist: %32v\nGenre : %32v", nextSong.Title, nextSong.Artist, nextSong.Genre)).Border(lipgloss.NormalBorder()).BorderTop(false).BorderBottom(false).BorderRight(false).BorderLeft(true).PaddingLeft(1)
 
 	list := lipgloss.JoinVertical(0, s1.Render(), lipgloss.NewStyle().Render(""), s2.Render(), lipgloss.NewStyle().Render(""), s3.Render())
 	result := lipgloss.Place(m.width, m.height, 0.5, 0.5, list)
