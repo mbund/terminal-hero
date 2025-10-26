@@ -59,7 +59,7 @@ func (m Menu) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if err != nil {
 					panic(err)
 				}
-				cursor, _ := gotar_hero.NewChartCursor(*chart, "ExpertSingle")
+				cursor, _ := gotar_hero.NewChartCursor(*chart, "EasySingle")
 				game := Game{width: m.width, height: m.height, stopwatch: stopwatch.New(stopwatch.WithInterval(10 * time.Millisecond)), mixer: m.mixer, held: make([]bool, 5), notes: make([][]NotePos, 5), cursor: *cursor}
 				return game, game.Init()
 			}
@@ -184,19 +184,16 @@ func AddTitle(rendered, title string) string {
 		return rendered
 	}
 
-	// Replace characters 3 to 3+len(title)+2 in the first line
 	firstLine := lines[0]
 	runes := []rune(firstLine)
 
 	titleWithSpaces := " " + title + " "
 	titleRunes := []rune(titleWithSpaces)
 
-	// Make sure we have enough characters to replace
 	if len(runes) < 3+len(titleRunes) {
 		return rendered
 	}
 
-	// Replace the characters
 	for i, r := range titleRunes {
 		runes[3+i] = r
 	}

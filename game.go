@@ -2,12 +2,14 @@ package main
 
 import (
 	"fmt"
+	"image/color"
 	"math"
-	"strconv"
+	"math/rand/v2"
+	"strings"
 
 	stopwatch "github.com/charmbracelet/bubbles/v2/stopwatch"
 	tea "github.com/charmbracelet/bubbletea/v2"
-	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/charmbracelet/log"
 	gotar_hero "github.com/mbund/terminal-hero/pkg/gotar-hero"
 )
@@ -47,7 +49,7 @@ func (m Game) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
 		log.Info("pressed", "key", msg.Key().Text)
-		switch msg.Key().Text {
+		switch msg.Key().String() {
 		case "1":
 			m.held[0] = true
 		case "2":
@@ -60,7 +62,7 @@ func (m Game) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.held[4] = true
 		case "j", "k", "space":
 			m.strumming = true
-		case "q":
+		case "q", "ctrl+c":
 			return m, tea.Quit
 		}
 	case tea.KeyReleaseMsg:
@@ -77,7 +79,6 @@ func (m Game) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "5":
 			m.held[4] = false
 		}
-
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -102,10 +103,10 @@ func mod(a, b int) int {
 }
 
 type rowColors struct {
-	boxBorder lipgloss.Color
-	boxFill   lipgloss.Color
-	note      lipgloss.Color
-	overlap   lipgloss.Color
+	boxBorder color.Color
+	boxFill   color.Color
+	note      color.Color
+	overlap   color.Color
 }
 
 // postitions is an array of half-character coordinates
@@ -155,7 +156,7 @@ func renderRow(charWidth int, positions []NotePos, held bool, colors rowColors, 
 	return result
 }
 
-func lighten(c lipgloss.Color, percent float64) lipgloss.Color {
+func lighten(c color.Color, percent float64) color.Color {
 	r16, g16, b16, _ := c.RGBA()
 
 	r := float64(r16) / 257
@@ -267,6 +268,8 @@ func (m *Game) update() bool {
 				log.Info("missed", "note", i)
 				m.strumInfo = fmt.Sprintf("miss %d", i)
 				m.score -= 50
+				volume := rand.Float64() / 2.0
+				m.mixer.Play("strum2.raw", 0.5+volume)
 			}
 		}
 	}
@@ -288,6 +291,8 @@ func (m *Game) update() bool {
 			if m.held[i] {
 				if math.IsNaN(noteDist[i]) {
 					m.strumInfo += fmt.Sprintf("false positive %d; ", i)
+					volume := rand.Float64() / 2.0
+					m.mixer.Play("strum.raw", 0.5+volume)
 				} else {
 					m.strumInfo += fmt.Sprintf("distance %d %f; ", i, noteDist[i])
 				}
@@ -313,7 +318,6 @@ func (m *Game) update() bool {
 }
 
 func (m Game) View() tea.View {
-
 	green := lipgloss.Color("#19a11b")
 	greens := rowColors{
 		boxBorder: green,
@@ -354,17 +358,27 @@ func (m Game) View() tea.View {
 		overlap:   orange,
 	}
 
-	result := m.strumInfo + " score: " + strconv.Itoa(int(m.score)) + "\n"
+	// result := m.strumInfo + " score: " + strconv.Itoa(int(m.score)) + "\n"
 
 	secondsPerChar := 2.0 / float64(NoteSpeed)
-
 	ticksPerChar := m.cursor.CurrentTicksPerSecond() * secondsPerChar
 
-	result += renderRow(m.width, m.notes[0], m.held[0], greens, ticksPerChar)
-	result += renderRow(m.width, m.notes[1], m.held[1], reds, ticksPerChar)
-	result += renderRow(m.width, m.notes[2], m.held[2], yellows, ticksPerChar)
-	result += renderRow(m.width, m.notes[3], m.held[3], blues, ticksPerChar)
-	result += renderRow(m.width, m.notes[4], m.held[4], oranges, ticksPerChar)
+	rows := renderRow(200, m.notes[0], m.held[0], greens, ticksPerChar)
+	rows += renderRow(200, m.notes[1], m.held[1], reds, ticksPerChar)
+	rows += renderRow(200, m.notes[2], m.held[2], yellows, ticksPerChar)
+	rows += renderRow(200, m.notes[3], m.held[3], blues, ticksPerChar)
+	rows += renderRow(200, m.notes[4], m.held[4], oranges, ticksPerChar)
+	rows = strings.TrimRight(rows, "\n")
+	rows = lipgloss.NewStyle().Border(lipgloss.NormalBorder()).Render(rows)
+	result := lipgloss.JoinVertical(0,
+		rows,
+		lipgloss.NewStyle().Foreground(subtle).Padding(0, 0, 0, 2).Render(lipgloss.JoinVertical(0,
+			m.stopwatch.View(),
+			m.strumInfo,
+		)),
+	)
+
+	result = lipgloss.Place(m.width, m.height, 0.5, 0.5, result)
 
 	view := tea.NewView(result)
 	view.KeyReleases = true
