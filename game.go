@@ -28,7 +28,7 @@ type Game struct {
 
 var (
 	NoteSpawn = 450
-	NoteSpeed = 225
+	NoteSpeed = 200
 )
 
 func (m Game) Init() tea.Cmd {
@@ -192,12 +192,13 @@ func (m *Game) update() bool {
 	events, adv := m.cursor.NextEvent()
 	advTime := float64(adv) / m.cursor.CurrentTicksPerSecond()
 
-	log.Info("update", "accTime", m.accTime, "advTime", advTime)
+	// log.Info("update", "accTime", m.accTime, "advTime", advTime)
 	m.accTime += deltaTime
 
 	// if we have accumalated more time than needs to be advanced
 	// we need to consume these events
-	for m.accTime >= advTime {
+	log.Info("tick", "adv", adv)
+	for m.accTime >= advTime && adv > 0 {
 		// consume the events
 		m.handleEvents(events)
 		m.accTime -= advTime
@@ -225,7 +226,7 @@ func (m *Game) update() bool {
 					continue
 				}
 			}
-			if oldPositions[j] >= -8.0 {
+			if oldPositions[j] >= -32.0 {
 				m.positions[i] = append(m.positions[i], oldPositions[j]-deltaTime*float64(NoteSpeed))
 			} else {
 				m.strumInfo = fmt.Sprintf("miss %d", i)
@@ -233,7 +234,13 @@ func (m *Game) update() bool {
 		}
 	}
 
-	if adv == 0 && len(m.positions) == 0 {
+	total_positions := len(m.positions[0]) + len(m.positions[2]) + len(m.positions[3]) + len(m.positions[4])
+
+	if adv == 0 {
+		log.Info("no more events", "positions left", total_positions)
+	}
+
+	if adv == 0 && total_positions == 0 {
 		// all the notes have passed and there are no more events coming so we are done
 		return true
 	}

@@ -374,9 +374,12 @@ func NewChartCursor(chart Chart, track string) (*ChartCursor, error) {
 	for i := range chart.Tracks {
 		if chart.Tracks[i].Name == track {
 			cursor.track = i
+			cursor.AdvanceTick(0)
+			log.Info("initializing cursor", "ts_index", cursor.ts_index, "tempo_index", cursor.tempo_index, "note_index", cursor.note_index)
 			return &cursor, nil
 		}
 	}
+
 	return nil, fmt.Errorf("unable to find track")
 }
 
@@ -432,6 +435,11 @@ func (cursor ChartCursor) NextEvent() ([]any, int) {
 	ts, ts_adv := cursor.NextTimestampChange()
 
 	min_adv := min(note_adv, tempo_adv, ts_adv)
+
+	if min_adv == 0 {
+		log.Error("adv of zero before end", "note_cursor", cursor.note_index, "temp_index", cursor.tempo_index, "ts", cursor.ts_index, "note_adv", note_adv, "tempo_adv", tempo_adv, "ts_adv", ts_adv)
+		panic("")
+	}
 
 	if min_adv == math.MaxInt {
 		return []any{}, 0
