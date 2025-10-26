@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"math"
+	"math/rand/v2"
 
 	stopwatch "github.com/charmbracelet/bubbles/v2/stopwatch"
 	tea "github.com/charmbracelet/bubbletea/v2"
@@ -197,7 +198,7 @@ func (m *Game) update() bool {
 
 	// if we have accumalated more time than needs to be advanced
 	// we need to consume these events
-	log.Info("tick", "adv", adv)
+	// log.Info("tick", "adv", adv)
 	for m.accTime >= advTime && adv > 0 {
 		// consume the events
 		m.handleEvents(events)
@@ -251,6 +252,10 @@ func (m *Game) update() bool {
 			if m.held[i] {
 				if math.IsNaN(noteDist[i]) {
 					m.strumInfo += fmt.Sprintf("false positive %d; ", i)
+					volume := rand.Float64() / 2.0
+					if rand.IntN(2) == 0 {
+						m.mixer.Play("strum.raw", 0.5+volume)
+					}
 				} else {
 					m.strumInfo += fmt.Sprintf("distance %d %f; ", i, noteDist[i])
 				}

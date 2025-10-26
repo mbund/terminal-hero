@@ -476,7 +476,7 @@ func OpenChart(filename string) (*Chart, error) {
 		panic(err.Error())
 	}
 	// skip BOM
-	// file.Seek(3, 0)
+	file.Seek(3, 0)
 	uchart, err := ParseRaw(file)
 	if err != nil {
 		return nil, err

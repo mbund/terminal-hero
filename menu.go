@@ -59,7 +59,7 @@ func (m Menu) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if err != nil {
 					panic(err)
 				}
-				cursor, _ := gotar_hero.NewChartCursor(*chart, "ExpertSingle")
+				cursor, _ := gotar_hero.NewChartCursor(*chart, "EasySingle")
 				game := Game{width: m.width, height: m.height, stopwatch: stopwatch.New(stopwatch.WithInterval(10 * time.Millisecond)), mixer: m.mixer, held: make([]bool, 5), positions: make([][]float64, 5), cursor: *cursor}
 				return game, game.Init()
 			}
