@@ -55,7 +55,10 @@ func (m Menu) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case BUTTON_QUIT:
 				return m, tea.Quit
 			case BUTTON_PLAY:
-				chart, _ := gotar_hero.OpenChart("notes.chart")
+				chart, err := gotar_hero.OpenChart("notes.chart")
+				if err != nil {
+					panic(err)
+				}
 				cursor, _ := gotar_hero.NewChartCursor(*chart, "ExpertSingle")
 				game := Game{width: m.width, height: m.height, stopwatch: stopwatch.New(stopwatch.WithInterval(10 * time.Millisecond)), mixer: m.mixer, held: make([]bool, 5), positions: make([][]float64, 5), cursor: *cursor}
 				return game, game.Init()

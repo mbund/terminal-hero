@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime"
 	"sync"
 	"time"
 
@@ -22,6 +23,7 @@ type AudioMixer struct {
 	sampleRate     int
 	bytesPerSample int
 	paused         bool
+	elapsedTime    float64
 }
 
 type playback struct {
@@ -274,21 +276,25 @@ func (am *AudioMixer) MixInto(buffer []byte) {
 }
 
 func sendAudio(s ssh.Session, mixer *AudioMixer) {
+	runtime.LockOSThread()
+	startTime := time.Now()
 	buffer := make([]byte, mixer.BufferSize())
 	nextTick := time.Now()
-
 	for {
 		nextTick = nextTick.Add(mixer.Period())
-		time.Sleep(time.Until(nextTick))
-
+		// time.Sleep(time.Until(nextTick))
+		for time.Now().Before(nextTick) {
+		}
 		clear(buffer)
 		mixer.FillBuffers()
 		mixer.MixInto(buffer)
-
 		_, err := s.Write(buffer)
 		if err != nil {
 			log.Infof("stopped sending audio: %v", err)
 			return
 		}
+		mixer.mu.Lock()
+		mixer.elapsedTime = time.Since(startTime).Seconds()
+		mixer.mu.Unlock()
 	}
 }

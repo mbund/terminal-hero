@@ -75,7 +75,11 @@ func (m Game) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 	var cmd tea.Cmd
 	m.stopwatch, cmd = m.stopwatch.Update(msg)
-	m.update()
+
+	done := m.update()
+	if done {
+		return m, tea.Quit
+	}
 
 	return m, cmd
 }
@@ -179,9 +183,11 @@ func (m *Game) handleEvents(events []any) {
 	}
 }
 
-func (m *Game) update() {
-	newTime := m.stopwatch.Elapsed().Seconds()
+func (m *Game) update() bool {
+	m.mixer.mu.Lock()
+	newTime := m.mixer.elapsedTime
 	deltaTime := newTime - m.prevTime
+	m.mixer.mu.Unlock()
 
 	events, adv := m.cursor.NextEvent()
 	advTime := float64(adv) / m.cursor.CurrentTicksPerSecond()
@@ -220,11 +226,16 @@ func (m *Game) update() {
 				}
 			}
 			if oldPositions[j] >= -8.0 {
-				m.positions[i] = append(m.positions[i], oldPositions[j]-deltaTime*64.0)
+				m.positions[i] = append(m.positions[i], oldPositions[j]-deltaTime*float64(NoteSpeed))
 			} else {
 				m.strumInfo = fmt.Sprintf("miss %d", i)
 			}
 		}
+	}
+
+	if adv == 0 && len(m.positions) == 0 {
+		// all the notes have passed and there are no more events coming so we are done
+		return true
 	}
 
 	if m.strumming {
@@ -247,12 +258,14 @@ func (m *Game) update() {
 		}
 	}
 
-	if newTime > (float64(NoteSpawn)-10.0)/float64(NoteSpeed) && !m.startedAudio {
+	if newTime > (float64(NoteSpawn)-20.0)/float64(NoteSpeed) && !m.startedAudio {
 		_, _ = m.mixer.Play("audio.raw", 1.0)
 		m.startedAudio = true
 	}
 
 	m.prevTime = newTime
+
+	return false
 }
 
 func (m Game) View() tea.View {
