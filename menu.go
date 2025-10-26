@@ -184,19 +184,16 @@ func AddTitle(rendered, title string) string {
 		return rendered
 	}
 
-	// Replace characters 3 to 3+len(title)+2 in the first line
 	firstLine := lines[0]
 	runes := []rune(firstLine)
 
 	titleWithSpaces := " " + title + " "
 	titleRunes := []rune(titleWithSpaces)
 
-	// Make sure we have enough characters to replace
 	if len(runes) < 3+len(titleRunes) {
 		return rendered
 	}
 
-	// Replace the characters
 	for i, r := range titleRunes {
 		runes[3+i] = r
 	}
