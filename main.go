@@ -6,6 +6,7 @@ package main
 import (
 	"context"
 	"errors"
+	"io/fs"
 
 	"net"
 	"os"
@@ -20,6 +21,7 @@ import (
 	"github.com/charmbracelet/wish/v2/activeterm"
 	"github.com/charmbracelet/wish/v2/bubbletea"
 	"github.com/charmbracelet/wish/v2/logging"
+	gotar_hero "github.com/mbund/terminal-hero/pkg/gotar-hero"
 )
 
 const (
@@ -60,17 +62,45 @@ func main() {
 	}
 }
 
+func getCharts() []gotar_hero.Chart {
+	entries, err := fs.ReadDir(os.DirFS("."), "data")
+	if err != nil {
+		panic(err.Error())
+	}
+
+	var charts []gotar_hero.Chart
+
+	for i := range entries {
+		entry := entries[i]
+		chart, err := gotar_hero.OpenChart("data/" + entry.Name())
+		if err != nil {
+			panic(err.Error())
+		}
+		charts = append(charts, *chart)
+	}
+
+	return charts
+}
+
+func getSongs(charts []gotar_hero.Chart) []Song {
+	songs := []Song{}
+	for i := range charts {
+		chart := charts[i]
+		songs = append(songs, NewSong(chart))
+	}
+	return songs
+}
+
 func teaHandler(s ssh.Session) (tea.Model, []tea.ProgramOption) {
 	// This should never fail, as we are using the activeterm middleware.
 	pty, _, _ := s.Pty()
 
-	m := Leaderboard{
-		width:   pty.Window.Width,
-		height:  pty.Window.Height,
-		song:    "Song Name",
-		entries: []LeadeboardEntry{{"Rock God", 100000, "key1"}, {"The Guitar Hero", 90000, "key2"}, {"EPIC Gamer", 80000, "key3"}, {"s t e v e", 70000, "key3"}, {"anonymous", 65000, "key4"}, {"John Wick", 60000, "key5"}, {"Gandalf", 55000, "key6"}},
+	m := SongSelect{
+		getSongs(getCharts()),
+		0,
+		pty.Window.Width,
+		pty.Window.Height,
 	}
-	m.AddEntry(LeadeboardEntry{"GOAT", 200000, "key4"})
-	m.AddEntry(LeadeboardEntry{"Mark", 75000, "key7"})
+
 	return m, []tea.ProgramOption{}
 }

@@ -13,7 +13,7 @@
   PreviewEnd = 0
   Genre = "Heavy Metal"
   MediaType = "cd"
-  MusicStream = "song.ogg"
+  MusicStream = "ironman.raw"
 }
 [SyncTrack]
 {

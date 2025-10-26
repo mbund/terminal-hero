@@ -180,6 +180,7 @@ type Chart struct {
 	Offset               float64
 	PreviewStart         float64
 	PreviewEnd           float64
+	MusicStream          string
 	TimeSignatureChanges []TSChange
 	TempoChanges         []TempoChange
 	Tracks               []InstrumentTrack
@@ -237,6 +238,12 @@ func Parse(uchart *UnstructuredChart) (*Chart, error) {
 				return nil, fmt.Errorf("chart Charter is not a string")
 			}
 			chart.Charter = t
+		case "MusicStream":
+			t, ok := kv.value[0].(string)
+			if !ok {
+				return nil, fmt.Errorf("chart MusicStream is not a string")
+			}
+			chart.MusicStream = t
 		case "Resolution":
 			t, ok := kv.value[0].(float64)
 			i := int(t)

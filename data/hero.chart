@@ -13,7 +13,7 @@
   PreviewEnd = 0
   Genre = "Synthwave"
   MediaType = "cd"
-  MusicStream = "C:\Users\bluem\Desktop\Apps and Shit\.chart bs\Hero ft. FATHERDUDE, Perogi\DRYVE - Hero (w_ FATHERDUDE)[ft Pierogi].ogg"
+  MusicStream = "hero.raw"
 }
 [SyncTrack]
 {
