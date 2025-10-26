@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"os"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -354,7 +355,7 @@ func Parse(uchart *UnstructuredChart) (*Chart, error) {
 }
 
 type ChartCursor struct {
-	chart Chart
+	Chart Chart
 	// the current tick, events on this tick will *not* be considered the next event
 	current_tick int
 	track        int
@@ -368,7 +369,7 @@ type ChartCursor struct {
 
 func NewChartCursor(chart Chart, track string) (*ChartCursor, error) {
 	cursor := ChartCursor{}
-	cursor.chart = chart
+	cursor.Chart = chart
 
 	for i := range chart.Tracks {
 		if chart.Tracks[i].Name == track {
@@ -385,44 +386,44 @@ func (cursor *ChartCursor) AdvanceTick(ticks int) {
 	i := 0
 
 	// advance ts_index
-	for i = cursor.ts_index; i < len(cursor.chart.TimeSignatureChanges) && cursor.chart.TimeSignatureChanges[i].tick <= cursor.current_tick; i++ {
+	for i = cursor.ts_index; i < len(cursor.Chart.TimeSignatureChanges) && cursor.Chart.TimeSignatureChanges[i].tick <= cursor.current_tick; i++ {
 	}
 	cursor.ts_index = i
 
 	// advance tempo_index
-	for i = cursor.tempo_index; i < len(cursor.chart.TempoChanges) && cursor.chart.TempoChanges[i].tick <= cursor.current_tick; i++ {
+	for i = cursor.tempo_index; i < len(cursor.Chart.TempoChanges) && cursor.Chart.TempoChanges[i].tick <= cursor.current_tick; i++ {
 	}
 	cursor.tempo_index = i
 
 	// advance note_index
-	for i = cursor.note_index; i < len(cursor.chart.Tracks[cursor.track].Notes) && cursor.chart.Tracks[cursor.track].Notes[i].Tick <= cursor.current_tick; i++ {
+	for i = cursor.note_index; i < len(cursor.Chart.Tracks[cursor.track].Notes) && cursor.Chart.Tracks[cursor.track].Notes[i].Tick <= cursor.current_tick; i++ {
 	}
 	cursor.note_index = i
 }
 
 func (cursor ChartCursor) NextNote() ([]Note, int) {
-	if cursor.note_index >= len(cursor.chart.Tracks[cursor.track].Notes) {
+	if cursor.note_index >= len(cursor.Chart.Tracks[cursor.track].Notes) {
 		return []Note{}, math.MaxInt
 	}
-	next_tick := cursor.chart.Tracks[cursor.track].Notes[cursor.note_index].Tick
+	next_tick := cursor.Chart.Tracks[cursor.track].Notes[cursor.note_index].Tick
 	i := cursor.note_index
-	for i = cursor.note_index; i < len(cursor.chart.Tracks[cursor.track].Notes) && cursor.chart.Tracks[cursor.track].Notes[i].Tick == next_tick; i++ {
+	for i = cursor.note_index; i < len(cursor.Chart.Tracks[cursor.track].Notes) && cursor.Chart.Tracks[cursor.track].Notes[i].Tick == next_tick; i++ {
 	}
-	return cursor.chart.Tracks[cursor.track].Notes[cursor.note_index:i], (next_tick - cursor.current_tick)
+	return cursor.Chart.Tracks[cursor.track].Notes[cursor.note_index:i], (next_tick - cursor.current_tick)
 }
 
 func (cursor ChartCursor) NextTempoChange() (*TempoChange, int) {
-	if cursor.tempo_index >= len(cursor.chart.TempoChanges) {
+	if cursor.tempo_index >= len(cursor.Chart.TempoChanges) {
 		return nil, math.MaxInt
 	}
-	return &cursor.chart.TempoChanges[cursor.tempo_index], cursor.chart.TempoChanges[cursor.tempo_index].tick - cursor.current_tick
+	return &cursor.Chart.TempoChanges[cursor.tempo_index], cursor.Chart.TempoChanges[cursor.tempo_index].tick - cursor.current_tick
 }
 
 func (cursor ChartCursor) NextTimestampChange() (*TSChange, int) {
-	if cursor.ts_index >= len(cursor.chart.TimeSignatureChanges) {
+	if cursor.ts_index >= len(cursor.Chart.TimeSignatureChanges) {
 		return nil, math.MaxInt
 	}
-	return &cursor.chart.TimeSignatureChanges[cursor.ts_index], cursor.chart.TimeSignatureChanges[cursor.ts_index].tick - cursor.current_tick
+	return &cursor.Chart.TimeSignatureChanges[cursor.ts_index], cursor.Chart.TimeSignatureChanges[cursor.ts_index].tick - cursor.current_tick
 }
 
 func (cursor ChartCursor) NextEvent() ([]any, int) {
@@ -455,10 +456,28 @@ func TicksPerSecond(resolution float64, bpm float64, denominator float64) float6
 }
 
 func (cursor ChartCursor) CurrentTicksPerSecond() float64 {
-	bpm := cursor.chart.TempoChanges[cursor.tempo_index-1].tempo
-	denominator := cursor.chart.TimeSignatureChanges[cursor.ts_index-1].denominator
+	bpm := cursor.Chart.TempoChanges[max(0, cursor.tempo_index-1)].tempo
+	denominator := cursor.Chart.TimeSignatureChanges[max(0, cursor.ts_index-1)].denominator
 	// log.Debug("getting tps", "resolution", cursor.chart.Resolution, "bpm", bpm, "denominator", denominator)
-	return TicksPerSecond(float64(cursor.chart.Resolution), bpm, float64(denominator))
+	return TicksPerSecond(float64(cursor.Chart.Resolution), bpm, float64(denominator))
+}
+
+func OpenChart(filename string) (*Chart, error) {
+	file, err := os.Open(filename)
+	if err != nil {
+		panic(err.Error())
+	}
+	// skip BOM
+	file.Seek(3, 0)
+	uchart, err := ParseRaw(file)
+	if err != nil {
+		return nil, err
+	}
+	chart, err := Parse(uchart)
+	if err != nil {
+		return nil, err
+	}
+	return chart, nil
 }
 
 // file, err := os.Open("notes.chart")

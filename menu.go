@@ -6,6 +6,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/v2/spinner"
 	"github.com/charmbracelet/bubbles/v2/stopwatch"
+	gotar_hero "github.com/mbund/terminal-hero/pkg/gotar-hero"
 
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/lipgloss/v2"
@@ -28,8 +29,6 @@ type Menu struct {
 }
 
 func (m Menu) Init() tea.Cmd {
-	_, _ = m.mixer.Play("audio.raw", 1.0)
-
 	return tea.Batch(
 		connectionStatus(m.sessionData.connected),
 		m.spinner.Tick,
@@ -56,7 +55,9 @@ func (m Menu) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case BUTTON_QUIT:
 				return m, tea.Quit
 			case BUTTON_PLAY:
-				game := Game{width: m.width, height: m.height, stopwatch: stopwatch.New(stopwatch.WithInterval(10 * time.Millisecond)), mixer: m.mixer, held: make([]bool, 5), positions: make([][]float64, 5)}
+				chart, _ := gotar_hero.OpenChart("notes.chart")
+				cursor, _ := gotar_hero.NewChartCursor(*chart, "ExpertSingle")
+				game := Game{width: m.width, height: m.height, stopwatch: stopwatch.New(stopwatch.WithInterval(10 * time.Millisecond)), mixer: m.mixer, held: make([]bool, 5), positions: make([][]float64, 5), cursor: *cursor}
 				return game, game.Init()
 			}
 		}

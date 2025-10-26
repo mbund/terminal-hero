@@ -11,15 +11,22 @@ import (
 )
 
 type Game struct {
-	width     int
-	height    int
-	stopwatch stopwatch.Model
-	mixer     *AudioMixer
-	held      []bool
-	cursor    gotar_hero.ChartCursor
-	prevTime  float64
-	positions [][]float64
+	width        int
+	height       int
+	stopwatch    stopwatch.Model
+	mixer        *AudioMixer
+	held         []bool
+	cursor       gotar_hero.ChartCursor
+	prevTime     float64
+	positions    [][]float64
+	accTime      float64
+	startedAudio bool
 }
+
+var (
+	NoteSpawn = 450
+	NoteSpeed = 225
+)
 
 func (m Game) Init() tea.Cmd {
 	return m.stopwatch.Init()
@@ -148,21 +155,61 @@ func lighten(c lipgloss.Color, percent float64) lipgloss.Color {
 	return lipgloss.Color(fmt.Sprintf("#%02x%02x%02x", r2, g2, b2))
 }
 
+func (m *Game) handleEvents(events []any) {
+	for i := range events {
+		switch u := events[i].(type) {
+		case []gotar_hero.Note:
+			for j := range u {
+				note := u[j]
+				if note.Typ > 4 || note.Typ < 0 {
+					// silently discared bad notes
+					continue
+				}
+				m.positions[note.Typ] = append(m.positions[note.Typ], float64(NoteSpawn))
+			}
+			// notes
+		case *gotar_hero.TempoChange:
+			// tempo changes are automatically handled by the cursor
+		case *gotar_hero.TSChange:
+			// time signature change are automatically handled by the cursor
+		}
+	}
+}
+
 func (m *Game) update() {
 	newTime := m.stopwatch.Elapsed().Seconds()
 	deltaTime := newTime - m.prevTime
+
+	events, adv := m.cursor.NextEvent()
+	advTime := float64(adv) / m.cursor.CurrentTicksPerSecond()
+
+	log.Info("update", "accTime", m.accTime, "advTime", advTime)
+	m.accTime += deltaTime
+
+	// if we have accumalated more time than needs to be advanced
+	// we need to consume these events
+	for m.accTime >= advTime {
+		// consume the events
+		m.handleEvents(events)
+		m.accTime -= advTime
+		m.cursor.AdvanceTick(adv)
+		// setup next events
+		events, adv = m.cursor.NextEvent()
+		advTime = float64(adv) * m.cursor.CurrentTicksPerSecond()
+	}
 
 	for i := range 5 {
 		if m.positions[i] == nil {
 			m.positions[i] = make([]float64, 0.0)
 		}
 		for j := range m.positions[i] {
-			m.positions[i][j] -= deltaTime * 64.0
+			m.positions[i][j] -= deltaTime * float64(NoteSpeed)
 		}
 	}
 
-	if m.prevTime == 0 {
-		m.positions[1] = append(m.positions[1], 100)
+	if newTime > (float64(NoteSpawn)-10.0)/float64(NoteSpeed) && !m.startedAudio {
+		_, _ = m.mixer.Play("audio.raw", 1.0)
+		m.startedAudio = true
 	}
 
 	m.prevTime = newTime
