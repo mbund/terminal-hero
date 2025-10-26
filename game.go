@@ -5,6 +5,7 @@ import (
 	"image/color"
 	"math"
 	"math/rand/v2"
+	"strconv"
 	"strings"
 
 	stopwatch "github.com/charmbracelet/bubbles/v2/stopwatch"
@@ -222,7 +223,7 @@ func (m *Game) update() bool {
 		m.cursor.AdvanceTick(adv)
 		// setup next events
 		events, adv = m.cursor.NextEvent()
-		advTime = float64(adv) * m.cursor.CurrentTicksPerSecond()
+		advTime = float64(adv) / m.cursor.CurrentTicksPerSecond()
 	}
 
 	noteDist := make([]float64, 5)
@@ -243,6 +244,7 @@ func (m *Game) update() bool {
 				if m.strumming && m.held[i] {
 					log.Info("hit note", "note", i, "dist", dist)
 					m.score += 40 * (32 - dist)
+					continue
 				}
 			}
 
@@ -261,9 +263,9 @@ func (m *Game) update() bool {
 				}
 			}
 
-			if oldPositions[j].position+oldPositions[j].length >= -32.0 {
+			if oldPositions[j].position+oldPositions[j].length/ticksPerChar >= -32.0 {
 				m.notes[i] = append(m.notes[i], NotePos{oldPositions[j].position - deltaTime*float64(NoteSpeed), oldPositions[j].length})
-			} else if oldPositions[j].length != 0 {
+			} else if oldPositions[j].length == 0 {
 				// for now just ignore missed long notes
 				log.Info("missed", "note", i)
 				m.strumInfo = fmt.Sprintf("miss %d", i)
@@ -291,8 +293,8 @@ func (m *Game) update() bool {
 			if m.held[i] {
 				if math.IsNaN(noteDist[i]) {
 					m.strumInfo += fmt.Sprintf("false positive %d; ", i)
-					volume := rand.Float64() / 2.0
-					m.mixer.Play("strum.raw", 0.5+volume)
+					// volume := rand.Float64() / 2.0
+					// m.mixer.Play("strum.raw", 0.5+volume)
 				} else {
 					m.strumInfo += fmt.Sprintf("distance %d %f; ", i, noteDist[i])
 				}
@@ -374,6 +376,7 @@ func (m Game) View() tea.View {
 		rows,
 		lipgloss.NewStyle().Foreground(subtle).Padding(0, 0, 0, 2).Render(lipgloss.JoinVertical(0,
 			m.stopwatch.View(),
+			"Score: "+strconv.Itoa(int(m.score)),
 			m.strumInfo,
 		)),
 	)
