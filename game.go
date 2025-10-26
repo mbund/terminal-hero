@@ -2,11 +2,11 @@ package main
 
 import (
 	"fmt"
+	"math"
 
 	stopwatch "github.com/charmbracelet/bubbles/v2/stopwatch"
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/charmbracelet/log"
 	gotar_hero "github.com/mbund/terminal-hero/pkg/gotar-hero"
 )
 
@@ -19,6 +19,8 @@ type Game struct {
 	cursor    gotar_hero.ChartCursor
 	prevTime  float64
 	positions [][]float64
+	strumming bool
+	strumInfo string
 }
 
 func (m Game) Init() tea.Cmd {
@@ -26,9 +28,9 @@ func (m Game) Init() tea.Cmd {
 }
 
 func (m Game) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	m.strumming = false
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
-		log.Info("key press", "key", msg.Key())
 		switch msg.Key().Text {
 		case "1":
 			m.held[0] = true
@@ -40,6 +42,8 @@ func (m Game) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.held[3] = true
 		case "5":
 			m.held[4] = true
+		case "j", "k", "space":
+			m.strumming = true
 		case "q":
 			return m, tea.Quit
 		}
@@ -85,8 +89,6 @@ type rowColors struct {
 
 // postitions is an array of half-character coordinates
 func renderRow(charWidth int, positions []float64, held bool, colors rowColors) string {
-	// boxLeft := 8
-	// boxRight := 20
 	a := []rune("\u2588\u2588\u2588\u2588 ")
 	b := []rune("\u2590\u2588\u2588\u2588\u258c")
 	result := ""
@@ -112,7 +114,7 @@ func renderRow(charWidth int, positions []float64, held bool, colors rowColors) 
 			}
 		}
 	}
-	for _ = range 2 {
+	for range 2 {
 		if held {
 			result += lipgloss.NewStyle().Foreground(colors.note).Render(string(line[0:5]))
 			result += lipgloss.NewStyle().Foreground(colors.overlap).Background(colors.boxFill).Render(string(line[5:9]))
@@ -152,17 +154,53 @@ func (m *Game) update() {
 	newTime := m.stopwatch.Elapsed().Seconds()
 	deltaTime := newTime - m.prevTime
 
+	if m.prevTime == 0 {
+		m.positions[1] = append(m.positions[1], 100)
+	}
+
+	noteDist := make([]float64, 5)
 	for i := range 5 {
-		if m.positions[i] == nil {
-			m.positions[i] = make([]float64, 0.0)
+		oldPositions := m.positions[i]
+		noteDist[i] = math.NaN()
+		m.positions[i] = make([]float64, 0.0)
+		if oldPositions == nil {
+			continue
 		}
-		for j := range m.positions[i] {
-			m.positions[i][j] -= deltaTime * 64.0
+		for j := range oldPositions {
+			targetPosition := 10.0
+			dist := math.Abs(oldPositions[j] - targetPosition)
+			if dist <= 8.0 {
+				noteDist[i] = dist
+				if m.strumming && m.held[i] {
+					continue
+				}
+			}
+			if oldPositions[j] >= -8.0 {
+				m.positions[i] = append(m.positions[i], oldPositions[j]-deltaTime*64.0)
+			} else {
+				m.strumInfo = fmt.Sprintf("miss %d", i)
+			}
 		}
 	}
 
-	if m.prevTime == 0 {
-		m.positions[1] = append(m.positions[1], 100)
+	if m.strumming {
+		m.strumInfo = ""
+		for i := range 5 {
+			if m.held[i] {
+				if math.IsNaN(noteDist[i]) {
+					m.strumInfo += fmt.Sprintf("false positive %d; ", i)
+				} else {
+					m.strumInfo += fmt.Sprintf("distance %d %f; ", i, noteDist[i])
+				}
+			} else {
+				if math.IsNaN(noteDist[i]) {
+					// true negative
+				} else {
+					m.strumInfo += fmt.Sprintf("false negative %d; ", i)
+				}
+			}
+
+		}
 	}
 
 	m.prevTime = newTime
@@ -210,7 +248,9 @@ func (m Game) View() tea.View {
 		overlap:   orange,
 	}
 
-	result := renderRow(m.width, m.positions[0], m.held[0], greens)
+	result := m.strumInfo + "\n"
+
+	result += renderRow(m.width, m.positions[0], m.held[0], greens)
 	result += renderRow(m.width, m.positions[1], m.held[1], reds)
 	result += renderRow(m.width, m.positions[2], m.held[2], yellows)
 	result += renderRow(m.width, m.positions[3], m.held[3], blues)
