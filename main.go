@@ -16,6 +16,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/charmbracelet/bubbles/v2/spinner"
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/ssh"
@@ -52,7 +53,8 @@ func newAssociationTuple(sess ssh.Session) associationTuple {
 }
 
 type sessionData struct {
-	mixer *AudioMixer
+	mixer     *AudioMixer
+	connected chan bool
 }
 
 var (
@@ -75,7 +77,8 @@ func getOrCreateSessionData(tuple associationTuple) *sessionData {
 	const bytesPerSample = 2
 
 	data := &sessionData{
-		mixer: NewAudioMixer(channels, mixAmp, framesPerWrite, sampleRate, bytesPerSample),
+		mixer:     NewAudioMixer(channels, mixAmp, framesPerWrite, sampleRate, bytesPerSample),
+		connected: make(chan bool, 1),
 	}
 	associations[tuple] = data
 	return data
@@ -86,21 +89,21 @@ func AudioMiddleware() wish.Middleware {
 		return func(sess ssh.Session) {
 			_, _, active := sess.Pty()
 			tuple := newAssociationTuple(sess)
+			sessionData := getOrCreateSessionData(tuple)
+			sess.Context().SetValue("sessionData", sessionData)
 			if active {
-				log.Info("Inserting association", "tuple", tuple)
-				getOrCreateSessionData(tuple)
 				next(sess)
 				return
 			}
 
-			sessionData := getOrCreateSessionData(tuple)
 			if sessionData == nil || sessionData.mixer == nil {
 				log.Error("failed to get session data")
 				_ = sess.Exit(1)
 				return
 			}
-			log.Info("associate", "tuple", tuple, "session", sessionData)
+			sessionData.connected <- true
 			sendAudio(sess, sessionData.mixer)
+			sessionData.connected <- false
 			_ = sess.Exit(0)
 		}
 	}
@@ -153,15 +156,19 @@ func main() {
 }
 
 func teaHandler(s ssh.Session) (tea.Model, []tea.ProgramOption) {
-	// This should never fail, as we are using the activeterm middleware.
 	pty, _, _ := s.Pty()
 
-	tuple := newAssociationTuple(s)
-	sessionData := getOrCreateSessionData(tuple)
+	sessionData := s.Context().Value("sessionData").(*sessionData)
+
+	sp := spinner.New()
+	sp.Spinner = spinner.Dot
+
 	m := Menu{
-		width:  pty.Window.Width,
-		height: pty.Window.Height,
-		mixer:  sessionData.mixer,
+		width:       pty.Window.Width,
+		height:      pty.Window.Height,
+		mixer:       sessionData.mixer,
+		sessionData: sessionData,
+		spinner:     sp,
 	}
 
 	return m, []tea.ProgramOption{}

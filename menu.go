@@ -1,27 +1,39 @@
 package main
 
 import (
-	"fmt"
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/bubbles/v2/spinner"
 	"github.com/charmbracelet/bubbles/v2/stopwatch"
+
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/lipgloss/v2"
-	"github.com/charmbracelet/log"
+)
+
+var (
+	normal    = lipgloss.Color("#EEEEEE")
+	subtle    = lipgloss.Color("#b0b0b0")
+	highlight = lipgloss.Color("#a3e635")
 )
 
 type Menu struct {
-	width    int
-	height   int
-	selected int
-	mixer    *AudioMixer
+	width       int
+	height      int
+	selected    int
+	connected   bool
+	mixer       *AudioMixer
+	sessionData *sessionData
+	spinner     spinner.Model
 }
 
 func (m Menu) Init() tea.Cmd {
-	log.Info("CALLING THE PLAY FUNCTION")
 	_, _ = m.mixer.Play("audio.raw", 1.0)
-	return nil
+
+	return tea.Batch(
+		connectionStatus(m.sessionData.connected),
+		m.spinner.Tick,
+	)
 }
 
 const (
@@ -48,11 +60,17 @@ func (m Menu) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return game, game.Init()
 			}
 		}
+	case connectionMsg:
+		m.connected = msg.connected
+		return m, connectionStatus(m.sessionData.connected)
+	case spinner.TickMsg:
+		var cmd tea.Cmd
+		m.spinner, cmd = m.spinner.Update(msg)
+		return m, cmd
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	}
-	log.Info("MENU MODEL UPDATE")
 	return m, nil
 }
 
@@ -93,12 +111,7 @@ const guitar = `
 `
 
 func (m Menu) View() tea.View {
-	var guitarGradiant = ""
-	var white = 160
-	for line := range strings.SplitSeq(guitar, "\n") {
-		white -= 4
-		guitarGradiant += lipgloss.NewStyle().Foreground(lipgloss.Color(fmt.Sprintf("#%02xff%02x", white, white))).Render(line) + "\n"
-	}
+	guitarGradiant := lipgloss.NewStyle().Foreground(normal).Render(guitar)
 
 	menu := ""
 	for i := range BUTTON_MAX + 1 {
@@ -111,27 +124,32 @@ func (m Menu) View() tea.View {
 		case BUTTON_QUIT:
 			button = "Quit"
 		}
-		color := lipgloss.Color("#004400")
+		color := subtle
 		if m.selected == i {
-			color = lipgloss.Color("#009900")
+			color = highlight
 		}
 		if menu != "" {
 			menu += "\n\n"
 		}
-		menu = lipgloss.JoinVertical(0.0, menu, lipgloss.NewStyle().Foreground(lipgloss.Color("#ffffff")).Background(color).Padding(1).PaddingLeft(2).Width(54).Render(button))
+		menu = lipgloss.JoinVertical(0.0, menu, lipgloss.NewStyle().Foreground(color).Bold(true).Border(lipgloss.NormalBorder()).BorderForeground(color).Padding(1).PaddingLeft(2).Width(54).Render(button))
 	}
 
 	connectionCommand := "ssh -T -p 23234 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no 100.107.230.44 | aplay -f S16_LE -c 2 -r 44100 --buffer-size 1024"
-	connectionBlock := "┌─ Connect to audio: ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐\n"
-	connectionBlock += "│  " + fmt.Sprintf("%-158s", "") + " │\n"
-	connectionBlock += "│  " + fmt.Sprintf("%-158s", connectionCommand) + " │\n"
-	connectionBlock += "│  " + fmt.Sprintf("%-158s", "") + " │\n"
-	connectionBlock += "└─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘\n"
+	connectionBlock := AddTitle(lipgloss.NewStyle().Foreground(normal).Border(lipgloss.NormalBorder()).Padding(1, 2).Width(170).Render(connectionCommand), "Connect to audio:")
+
+	var connectionStatus string
+	if m.connected {
+		connectionStatus = lipgloss.NewStyle().Foreground(highlight).Bold(true).Render("🎶Connected")
+	} else {
+		connectionStatus = lipgloss.NewStyle().Foreground(highlight).Bold(true).Render(m.spinner.View() + " Waiting for audio connection...")
+	}
 
 	result := lipgloss.JoinVertical(0.5,
-		lipgloss.NewStyle().Foreground(lipgloss.Color("#00cc00")).Render(text),
+		lipgloss.NewStyle().Foreground(highlight).Render(text),
 		"\n\n\n",
-		lipgloss.NewStyle().Foreground(lipgloss.Color("#00cc00")).Render(connectionBlock),
+		lipgloss.NewStyle().Foreground(subtle).Render(connectionBlock),
+		"\n",
+		connectionStatus,
 		"\n\n\n",
 		lipgloss.JoinHorizontal(0.5,
 			guitarGradiant,
@@ -143,4 +161,42 @@ func (m Menu) View() tea.View {
 	view := tea.NewView(result)
 	view.KeyReleases = true
 	return view
+}
+
+type connectionMsg struct {
+	connected bool
+}
+
+func connectionStatus(ch <-chan bool) tea.Cmd {
+	return func() tea.Msg {
+		value := <-ch
+		return connectionMsg{connected: value}
+	}
+}
+
+func AddTitle(rendered, title string) string {
+	lines := strings.Split(rendered, "\n")
+	if len(lines) == 0 {
+		return rendered
+	}
+
+	// Replace characters 3 to 3+len(title)+2 in the first line
+	firstLine := lines[0]
+	runes := []rune(firstLine)
+
+	titleWithSpaces := " " + title + " "
+	titleRunes := []rune(titleWithSpaces)
+
+	// Make sure we have enough characters to replace
+	if len(runes) < 3+len(titleRunes) {
+		return rendered
+	}
+
+	// Replace the characters
+	for i, r := range titleRunes {
+		runes[3+i] = r
+	}
+
+	lines[0] = string(runes)
+	return strings.Join(lines, "\n")
 }
