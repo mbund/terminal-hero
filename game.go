@@ -90,7 +90,7 @@ func renderRow(charWidth int, positions []float64, held bool, colors rowColors) 
 	a := []rune("\u2588\u2588\u2588\u2588 ")
 	b := []rune("\u2590\u2588\u2588\u2588\u258c")
 	result := ""
-	result += lipgloss.NewStyle().Foreground(colors.boxBorder).Render("    ┌────┐") + "\n"
+	result += lipgloss.NewStyle().Foreground(colors.boxBorder).Render("   ┌──────┐") + "\n"
 	line := make([]rune, charWidth)
 	for i := range charWidth {
 		line[i] = ' '
@@ -121,7 +121,7 @@ func renderRow(charWidth int, positions []float64, held bool, colors rowColors) 
 			result += lipgloss.NewStyle().Foreground(colors.note).Render(string(line)) + "\n"
 		}
 	}
-	result += lipgloss.NewStyle().Foreground(colors.boxBorder).Render("    └────┘") + "\n"
+	result += lipgloss.NewStyle().Foreground(colors.boxBorder).Render("   └──────┘") + "\n"
 	return result
 }
 
@@ -174,7 +174,7 @@ func (m Game) View() tea.View {
 	greens := rowColors{
 		boxBorder: green,
 		note:      green,
-		boxFill:   lighten(green, 20),
+		boxFill:   lighten(green, 30),
 		overlap:   green,
 	}
 
@@ -182,7 +182,7 @@ func (m Game) View() tea.View {
 	reds := rowColors{
 		boxBorder: red,
 		note:      red,
-		boxFill:   lighten(red, 20),
+		boxFill:   lighten(red, 30),
 		overlap:   red,
 	}
 
@@ -190,7 +190,7 @@ func (m Game) View() tea.View {
 	yellows := rowColors{
 		boxBorder: yellow,
 		note:      yellow,
-		boxFill:   lighten(yellow, 20),
+		boxFill:   lighten(yellow, 30),
 		overlap:   yellow,
 	}
 
@@ -198,7 +198,7 @@ func (m Game) View() tea.View {
 	blues := rowColors{
 		boxBorder: blue,
 		note:      blue,
-		boxFill:   lighten(blue, 20),
+		boxFill:   lighten(blue, 30),
 		overlap:   blue,
 	}
 
