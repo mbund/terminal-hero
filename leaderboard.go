@@ -50,9 +50,11 @@ func (m Leaderboard) View() tea.View {
 		case 0:
 			style = style.Foreground(lipgloss.Color("220"))
 		case 1:
-			style = style.Foreground(lipgloss.Color("7"))
+			style = style.Foreground(lipgloss.Color("255"))
 		case 2:
-			style = style.Foreground(lipgloss.Color("94"))
+			style = style.Foreground(lipgloss.Color("130"))
+		default:
+			style = style.Foreground(lipgloss.Color("250"))
 		}
 
 		s += style.Render()
