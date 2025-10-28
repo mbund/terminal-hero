@@ -138,7 +138,7 @@ func (m Menu) View() tea.View {
 		menu = lipgloss.JoinVertical(0.0, menu, lipgloss.NewStyle().Foreground(color).Bold(true).Border(lipgloss.NormalBorder()).BorderForeground(color).Padding(1).PaddingLeft(2).Width(54).Render(button))
 	}
 
-	connectionCommand := "ssh -T -p 23234 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no 100.107.230.44 | aplay -f S16_LE -c 2 -r 44100 --buffer-size 1024"
+	connectionCommand := "ssh -T -p 23234 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no 18.118.13.6  | aplay -f S16_LE -c 2 -r 44100 --buffer-size 1024"
 	connectionBlock := AddTitle(lipgloss.NewStyle().Foreground(normal).Border(lipgloss.NormalBorder()).Padding(1, 2).Width(170).Render(connectionCommand), "Connect to audio:")
 
 	var connectionStatus string
